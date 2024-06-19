@@ -1,0 +1,496 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00CA5F72BFDBF6200106C7A /* CosmoSliderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00CA5F62BFDBF6200106C7A /* CosmoSliderApp.swift */; };
+		A00CA5F92BFDBF6200106C7A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00CA5F82BFDBF6200106C7A /* ContentView.swift */; };
+		A00CA5FB2BFDBF6500106C7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00CA5FA2BFDBF6500106C7A /* Assets.xcassets */; };
+		A00CA5FE2BFDBF6500106C7A /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00CA5FD2BFDBF6500106C7A /* Preview Assets.xcassets */; };
+		A00CA6F42BFF4DD400106C7A /* tt_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A00CA6F12BFF4DD400106C7A /* tt_data.txt */; };
+		A00CA6F52BFF4DD400106C7A /* te_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A00CA6F22BFF4DD400106C7A /* te_data.txt */; };
+		A00CA6F62BFF4DD400106C7A /* ee_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A00CA6F32BFF4DD400106C7A /* ee_data.txt */; };
+		A00CA6F82C00BBAB00106C7A /* pp_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A00CA6F72C00BBAB00106C7A /* pp_data.txt */; };
+		A00CA7052C070EA300106C7A /* ell.svg in Resources */ = {isa = PBXBuildFile; fileRef = A00CA7032C070EA300106C7A /* ell.svg */; };
+		A084D3CA2C1ACE890087BEAF /* SVGImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3C92C1ACE890087BEAF /* SVGImage.swift */; };
+		A084D3F02C20510A0087BEAF /* default_model.tflite in Resources */ = {isa = PBXBuildFile; fileRef = A084D3EF2C20510A0087BEAF /* default_model.tflite */; };
+		A084D3F22C2060470087BEAF /* DocumentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F12C2060470087BEAF /* DocumentHandler.swift */; };
+		A084D3F42C2060880087BEAF /* LoadModelAndMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */; };
+		A084D3F82C2062FF0087BEAF /* SideMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F72C2062FF0087BEAF /* SideMenu.swift */; };
+		A084D3FA2C20634E0087BEAF /* PickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F92C20634E0087BEAF /* PickerButton.swift */; };
+		A084D3FC2C20637D0087BEAF /* AdditionalStructs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */; };
+		A099FB0B2C198378008B4575 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A099FB0A2C198378008B4575 /* ZIPFoundation */; };
+		A0C40C172C22F4950094D560 /* Cl.svg in Resources */ = {isa = PBXBuildFile; fileRef = A0C40C152C22F4950094D560 /* Cl.svg */; };
+		A0C40C182C22F4950094D560 /* Cl_pp.svg in Resources */ = {isa = PBXBuildFile; fileRef = A0C40C162C22F4950094D560 /* Cl_pp.svg */; };
+		A0FB0CEE2C0DA97F00B33FA7 /* app_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = A0FB0CED2C0DA97E00B33FA7 /* app_logo.png */; };
+		F8463F0DEA761E910ED090D6 /* Pods_CosmoSlider.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25703D71C12BBC1089704A1F /* Pods_CosmoSlider.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0DB0E307FDC56265CAA7DBC4 /* Pods-CosmoSlider.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CosmoSlider.release.xcconfig"; path = "Target Support Files/Pods-CosmoSlider/Pods-CosmoSlider.release.xcconfig"; sourceTree = "<group>"; };
+		252E92CB4EDE5DDDA5B806FA /* Pods-CosmoSlider.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CosmoSlider.debug.xcconfig"; path = "Target Support Files/Pods-CosmoSlider/Pods-CosmoSlider.debug.xcconfig"; sourceTree = "<group>"; };
+		25703D71C12BBC1089704A1F /* Pods_CosmoSlider.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CosmoSlider.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00CA5F32BFDBF6200106C7A /* CosmoSlider.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CosmoSlider.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00CA5F62BFDBF6200106C7A /* CosmoSliderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosmoSliderApp.swift; sourceTree = "<group>"; };
+		A00CA5F82BFDBF6200106C7A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00CA5FA2BFDBF6500106C7A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A00CA5FD2BFDBF6500106C7A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		A00CA6F12BFF4DD400106C7A /* tt_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tt_data.txt; sourceTree = "<group>"; };
+		A00CA6F22BFF4DD400106C7A /* te_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = te_data.txt; sourceTree = "<group>"; };
+		A00CA6F32BFF4DD400106C7A /* ee_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ee_data.txt; sourceTree = "<group>"; };
+		A00CA6F72C00BBAB00106C7A /* pp_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = pp_data.txt; sourceTree = "<group>"; };
+		A00CA7032C070EA300106C7A /* ell.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = ell.svg; sourceTree = "<group>"; };
+		A00CA7082C0873B900106C7A /* CosmoSlider-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "CosmoSlider-Info.plist"; sourceTree = SOURCE_ROOT; };
+		A084D3C92C1ACE890087BEAF /* SVGImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGImage.swift; sourceTree = "<group>"; };
+		A084D3EF2C20510A0087BEAF /* default_model.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = default_model.tflite; sourceTree = "<group>"; };
+		A084D3F12C2060470087BEAF /* DocumentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentHandler.swift; sourceTree = "<group>"; };
+		A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadModelAndMetadata.swift; sourceTree = "<group>"; };
+		A084D3F72C2062FF0087BEAF /* SideMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenu.swift; sourceTree = "<group>"; };
+		A084D3F92C20634E0087BEAF /* PickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerButton.swift; sourceTree = "<group>"; };
+		A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalStructs.swift; sourceTree = "<group>"; };
+		A0C40C152C22F4950094D560 /* Cl.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = Cl.svg; sourceTree = "<group>"; };
+		A0C40C162C22F4950094D560 /* Cl_pp.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = Cl_pp.svg; sourceTree = "<group>"; };
+		A0FB0CED2C0DA97E00B33FA7 /* app_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = app_logo.png; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00CA5F02BFDBF6200106C7A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F8463F0DEA761E910ED090D6 /* Pods_CosmoSlider.framework in Frameworks */,
+				A099FB0B2C198378008B4575 /* ZIPFoundation in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		32F8DEFD5DAB23F2A19C98D5 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				252E92CB4EDE5DDDA5B806FA /* Pods-CosmoSlider.debug.xcconfig */,
+				0DB0E307FDC56265CAA7DBC4 /* Pods-CosmoSlider.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		82BDD4329C92A1540105B05D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				25703D71C12BBC1089704A1F /* Pods_CosmoSlider.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A00CA5EA2BFDBF6200106C7A = {
+			isa = PBXGroup;
+			children = (
+				A00CA5F52BFDBF6200106C7A /* CosmoSlider */,
+				A00CA5F42BFDBF6200106C7A /* Products */,
+				32F8DEFD5DAB23F2A19C98D5 /* Pods */,
+				82BDD4329C92A1540105B05D /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		A00CA5F42BFDBF6200106C7A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00CA5F32BFDBF6200106C7A /* CosmoSlider.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00CA5F52BFDBF6200106C7A /* CosmoSlider */ = {
+			isa = PBXGroup;
+			children = (
+				A00CA7082C0873B900106C7A /* CosmoSlider-Info.plist */,
+				A00CA5F62BFDBF6200106C7A /* CosmoSliderApp.swift */,
+				A00CA5F82BFDBF6200106C7A /* ContentView.swift */,
+				A084D3C92C1ACE890087BEAF /* SVGImage.swift */,
+				A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */,
+				A084D3F12C2060470087BEAF /* DocumentHandler.swift */,
+				A084D3F92C20634E0087BEAF /* PickerButton.swift */,
+				A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */,
+				A084D3F72C2062FF0087BEAF /* SideMenu.swift */,
+				A00CA5FA2BFDBF6500106C7A /* Assets.xcassets */,
+				A00CA6F32BFF4DD400106C7A /* ee_data.txt */,
+				A00CA6F72C00BBAB00106C7A /* pp_data.txt */,
+				A084D3EF2C20510A0087BEAF /* default_model.tflite */,
+				A00CA6F22BFF4DD400106C7A /* te_data.txt */,
+				A0FB0CED2C0DA97E00B33FA7 /* app_logo.png */,
+				A0C40C162C22F4950094D560 /* Cl_pp.svg */,
+				A0C40C152C22F4950094D560 /* Cl.svg */,
+				A00CA7032C070EA300106C7A /* ell.svg */,
+				A00CA6F12BFF4DD400106C7A /* tt_data.txt */,
+				A00CA5FC2BFDBF6500106C7A /* Preview Content */,
+			);
+			path = "CosmoSlider";
+			sourceTree = "<group>";
+		};
+		A00CA5FC2BFDBF6500106C7A /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A00CA5FD2BFDBF6500106C7A /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00CA5F22BFDBF6200106C7A /* CosmoSlider */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00CA6012BFDBF6500106C7A /* Build configuration list for PBXNativeTarget "CosmoSlider" */;
+			buildPhases = (
+				DE04BDE7746B42B3EDF67BBB /* [CP] Check Pods Manifest.lock */,
+				A00CA5EF2BFDBF6200106C7A /* Sources */,
+				A00CA5F02BFDBF6200106C7A /* Frameworks */,
+				A00CA5F12BFDBF6200106C7A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CosmoSlider;
+			packageProductDependencies = (
+				A099FB0A2C198378008B4575 /* ZIPFoundation */,
+			);
+			productName = "CosmoSlider";
+			productReference = A00CA5F32BFDBF6200106C7A /* CosmoSlider.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00CA5EB2BFDBF6200106C7A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+				TargetAttributes = {
+					A00CA5F22BFDBF6200106C7A = {
+						CreatedOnToolsVersion = 15.4;
+					};
+				};
+			};
+			buildConfigurationList = A00CA5EE2BFDBF6200106C7A /* Build configuration list for PBXProject "CosmoSlider" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00CA5EA2BFDBF6200106C7A;
+			packageReferences = (
+				A099FB092C198378008B4575 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
+			productRefGroup = A00CA5F42BFDBF6200106C7A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00CA5F22BFDBF6200106C7A /* CosmoSlider */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00CA5F12BFDBF6200106C7A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00CA7052C070EA300106C7A /* ell.svg in Resources */,
+				A0C40C182C22F4950094D560 /* Cl_pp.svg in Resources */,
+				A084D3F02C20510A0087BEAF /* default_model.tflite in Resources */,
+				A00CA6F52BFF4DD400106C7A /* te_data.txt in Resources */,
+				A00CA6F42BFF4DD400106C7A /* tt_data.txt in Resources */,
+				A00CA5FE2BFDBF6500106C7A /* Preview Assets.xcassets in Resources */,
+				A0C40C172C22F4950094D560 /* Cl.svg in Resources */,
+				A00CA6F62BFF4DD400106C7A /* ee_data.txt in Resources */,
+				A0FB0CEE2C0DA97F00B33FA7 /* app_logo.png in Resources */,
+				A00CA5FB2BFDBF6500106C7A /* Assets.xcassets in Resources */,
+				A00CA6F82C00BBAB00106C7A /* pp_data.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		DE04BDE7746B42B3EDF67BBB /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-CosmoSlider-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00CA5EF2BFDBF6200106C7A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A084D3F42C2060880087BEAF /* LoadModelAndMetadata.swift in Sources */,
+				A00CA5F92BFDBF6200106C7A /* ContentView.swift in Sources */,
+				A084D3F22C2060470087BEAF /* DocumentHandler.swift in Sources */,
+				A084D3F82C2062FF0087BEAF /* SideMenu.swift in Sources */,
+				A084D3CA2C1ACE890087BEAF /* SVGImage.swift in Sources */,
+				A00CA5F72BFDBF6200106C7A /* CosmoSliderApp.swift in Sources */,
+				A084D3FA2C20634E0087BEAF /* PickerButton.swift in Sources */,
+				A084D3FC2C20637D0087BEAF /* AdditionalStructs.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00CA5FF2BFDBF6500106C7A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A00CA6002BFDBF6500106C7A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A00CA6022BFDBF6500106C7A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 252E92CB4EDE5DDDA5B806FA /* Pods-CosmoSlider.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"CosmoSlider/Preview Content\"";
+				DEVELOPMENT_TEAM = QP2GU63M99;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "CosmoSlider-Info.plist";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.3;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "AarhusCosmology.CosmoSlider";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A00CA6032BFDBF6500106C7A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0DB0E307FDC56265CAA7DBC4 /* Pods-CosmoSlider.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"CosmoSlider/Preview Content\"";
+				DEVELOPMENT_TEAM = QP2GU63M99;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "CosmoSlider-Info.plist";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.3;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "AarhusCosmology.CosmoSlider";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00CA5EE2BFDBF6200106C7A /* Build configuration list for PBXProject "CosmoSlider" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00CA5FF2BFDBF6500106C7A /* Debug */,
+				A00CA6002BFDBF6500106C7A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00CA6012BFDBF6500106C7A /* Build configuration list for PBXNativeTarget "CosmoSlider" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00CA6022BFDBF6500106C7A /* Debug */,
+				A00CA6032BFDBF6500106C7A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A099FB092C198378008B4575 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A099FB0A2C198378008B4575 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A099FB092C198378008B4575 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A00CA5EB2BFDBF6200106C7A /* Project object */;
+}
