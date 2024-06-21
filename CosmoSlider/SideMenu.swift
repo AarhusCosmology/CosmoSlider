@@ -285,12 +285,17 @@ struct HelpView: View {
                     .padding(.top, 20)
 
                 Divider()
-                
-                Text("This app allows you to visualize the CMB power spectrum for different cosmological models. The cosmological parameters can be adjusted using the sliders and the graph will then update in real-time. You can import a new model from the menu and also choose between your imported models.")
-                
-                Divider()
-                
-                Text("Above the graph are a few visualisation options. The \"Show data\" button toggles the visibility of Planck 2018 data for the TT, TE, and EE spectra and SPT data for the 𝜑𝜑 spectrum. Next to this is a button for choosing the plotted spectrum. The last button resets the position of the sliders to the best-fit point determined by an optimisation using the Planck Lite likelihood.")
+                ScrollView {
+                    Text("This app allows you to visualize the CMB power spectrum for different cosmological models. The cosmological parameters can be adjusted using the sliders and the graph will then update in real-time. You can import a new model from the menu and also choose between your imported models.")
+                    
+                    Divider()
+                    
+                    Text("Above the graph are a few visualisation options. The \"Show data\" button toggles the visibility of Planck 2018 data for the TT, TE, and EE spectra and SPT data for the 𝜑𝜑 spectrum. Next to this is a button for choosing the plotted spectrum. The last button resets the position of the sliders to the best-fit point determined by an optimisation using the Planck Lite likelihood.")
+                    
+                    Divider()
+                    
+                    Text("NB: The displayed spectra rely on neural networks trained on specific data sets representing the cosmological models. The default ΛCDM model is trained on a Latin hypercube and the behaviour should therefore be reasonable within the entire parameter space. Custom loaded models might, however, not necessarily be as reliable in all regions of the parameter space.")
+                }
                 
                 Spacer()
             }

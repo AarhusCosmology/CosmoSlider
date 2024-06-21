@@ -267,10 +267,10 @@ struct ContentView: View {
                                     Image(yAxisLabelName)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 150, height: 150)
+                                        .frame(width: yAxisLabelSize, height: yAxisLabelSize)
                                         .foregroundColor(.gray)
                                         .rotationEffect(.degrees(180), anchor: .center)
-                                        .padding(-70)
+                                        .padding(-yAxisLabelPad)
                                 }
                                 .padding([.leading, .trailing])
                                 .frame(height: graphHeight)
@@ -404,8 +404,22 @@ struct ContentView: View {
             result[url] = pair.value
         }
     }
-
-
+    
+    var yAxisLabelSize: CGFloat {
+        if selectedOption == "PP" {
+            return 150
+        } else {
+            return 100
+        }
+    }
+    
+    var yAxisLabelPad: CGFloat {
+        if selectedOption == "PP" {
+            return 70
+        } else {
+            return 45
+        }
+    }
     
     var yAxisLabelName: String {
         if selectedOption == "PP" {
