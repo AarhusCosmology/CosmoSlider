@@ -11,28 +11,6 @@ import TensorFlowLite
 import Foundation
 
 
-// Our custom view modifier to track rotation and
-// call our action
-struct DeviceRotationViewModifier: ViewModifier {
-    let action: (UIDeviceOrientation) -> Void
-
-    func body(content: Content) -> some View {
-        content
-            .onAppear()
-            .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-                action(UIDevice.current.orientation)
-            }
-    }
-}
-
-// A View wrapper to make the modifier easier to use
-extension View {
-    func onRotate(perform action: @escaping (UIDeviceOrientation) -> Void) -> some View {
-        self.modifier(DeviceRotationViewModifier(action: action))
-    }
-}
-
-
 struct ContentView: View {
     @State private var data: [GraphData] = []
     @State private var planckData: [GraphData] = []
@@ -41,6 +19,7 @@ struct ContentView: View {
     @State private var showingSelectSheet = false
     @State private var showingDocumentPicker = false
     @State private var showingBlankSheet = false
+    @State private var showingLiterature = false
     @State private var showingCredits = false
     @State private var showingHelp = false
     @State private var settingsDetent = PresentationDetent.medium
@@ -142,6 +121,22 @@ struct ContentView: View {
                                             selection: $settingsDetent
                                         )
                                         .edgesIgnoringSafeArea(.bottom)
+                                }
+                            }
+                            Section() {
+                                
+                                Button {
+                                    showingLiterature = true
+                                } label: {
+                                    Label("Literature", systemImage: "text.book.closed")
+                                        .contentShape(Rectangle())
+                                }
+                                .sheet(isPresented: $showingLiterature) {
+                                    LiteratureView()
+                                        .presentationDetents(
+                                            [.medium, .large],
+                                            selection: $settingsDetent
+                                         )
                                 }
                             }
                             Section() {
@@ -267,12 +262,13 @@ struct ContentView: View {
                                     Image(yAxisLabelName)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: yAxisLabelSize, height: yAxisLabelSize)
+                                        .frame(width: yAxisLabelSize, height: yAxisLabelSize, alignment: .bottom)
                                         .foregroundColor(.gray)
                                         .rotationEffect(.degrees(180), anchor: .center)
                                         .padding(-yAxisLabelPad)
                                 }
-                                .padding([.leading, .trailing])
+                                .padding(.leading, -yAxisPad)
+                                .padding(.trailing)
                                 .frame(height: graphHeight)
                                 .frame(width: graphWidth)
                                 .padding(.top, 75)
@@ -294,6 +290,7 @@ struct ContentView: View {
                                 Toggle("Show data", isOn: $showPlanckData)
                                     .frame(width: 100, alignment: .center)
                                     .padding()
+                                    .font(.system(size: 15))
                                 
                                 Spacer()
                                 
@@ -310,7 +307,9 @@ struct ContentView: View {
                                 
                                 Button(action: resetSliders) {
                                     Image(systemName: "arrow.counterclockwise")
+                                        .font(.system(size: 20))
                                         .padding()
+                                        .frame(width: 50, height: 50)
                                         .background(Color.white)
                                         .clipShape(Circle())
                                         .shadow(radius: 3)
@@ -337,6 +336,7 @@ struct ContentView: View {
                                                 
                                             Spacer()
                                             Text("\(sliderValues[index], specifier: precision)")
+                                                .font(.system(size: 15))
                                         }
                                     }
                                     .onChange(of: sliderValues[index]) {
@@ -413,11 +413,19 @@ struct ContentView: View {
         }
     }
     
+    var yAxisPad: CGFloat {
+        if selectedOption == "PP" {
+            return 105
+        } else {
+            return 55
+        }
+    }
+    
     var yAxisLabelPad: CGFloat {
         if selectedOption == "PP" {
-            return 70
+            return 15
         } else {
-            return 45
+            return 15
         }
     }
     
@@ -512,7 +520,7 @@ struct ContentView: View {
                     j = i + indexShift
                     var scaleValue: Double = 1
                     if selectedOption == "PP" {
-                        scaleValue = xArray[i]*(xArray[i]+1)*1e+7
+                        scaleValue = 1e+7//*xArray[i]*(xArray[i]+1)
                     } else {
                         scaleValue = pow(2.7255e+6,2)
                     }
@@ -655,8 +663,9 @@ struct ContentView: View {
                 if let doubleValue = value.as(Double.self) {
                     Text("\(doubleValue, format: .number)")
                         .rotationEffect(.degrees(270), anchor: .center)
-                        .frame(width: 35, height: 10)
+                        .frame(width: 50, height: 10)
                         .offset(x: 6)
+                        .font(.system(size: 12))
                 }
             }
         }

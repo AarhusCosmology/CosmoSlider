@@ -35,13 +35,14 @@ struct PickerButton: View {
         }) {
             HStack {
                 Image(systemName: "chart.xyaxis.line")
+                    .font(.system(size: 20))
                     .frame(width: 20, height: 20)
                 if selectedOption == "PP" {
                     Text("𝜑𝜑")
-                        .font(.title2)
+                        .font(.system(size: 20))
                 } else {
                     Text(selectedOption)
-                        .font(.title2)
+                        .font(.system(size: 20))
                 }
             }
         }

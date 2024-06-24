@@ -15,7 +15,7 @@
 		A01492182C255BB800E1C66F /* pp_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A01492142C255BB700E1C66F /* pp_data.txt */; };
 		A01492192C255BB800E1C66F /* te_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A01492152C255BB800E1C66F /* te_data.txt */; };
 		A014921A2C255BB800E1C66F /* ee_data.txt in Resources */ = {isa = PBXBuildFile; fileRef = A01492162C255BB800E1C66F /* ee_data.txt */; };
-		A014921C2C255BDA00E1C66F /* default_model.tflite in Resources */ = {isa = PBXBuildFile; fileRef = A014921B2C255BDA00E1C66F /* default_model.tflite */; };
+		A014921E2C2942D400E1C66F /* default_model.tflite in Resources */ = {isa = PBXBuildFile; fileRef = A014921D2C2942D400E1C66F /* default_model.tflite */; };
 		A084D3CA2C1ACE890087BEAF /* SVGImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3C92C1ACE890087BEAF /* SVGImage.swift */; };
 		A084D3F22C2060470087BEAF /* DocumentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F12C2060470087BEAF /* DocumentHandler.swift */; };
 		A084D3F42C2060880087BEAF /* LoadModelAndMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */; };
@@ -40,7 +40,7 @@
 		A01492142C255BB700E1C66F /* pp_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = pp_data.txt; sourceTree = "<group>"; };
 		A01492152C255BB800E1C66F /* te_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = te_data.txt; sourceTree = "<group>"; };
 		A01492162C255BB800E1C66F /* ee_data.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ee_data.txt; sourceTree = "<group>"; };
-		A014921B2C255BDA00E1C66F /* default_model.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = default_model.tflite; sourceTree = "<group>"; };
+		A014921D2C2942D400E1C66F /* default_model.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = default_model.tflite; sourceTree = "<group>"; };
 		A084D3C92C1ACE890087BEAF /* SVGImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGImage.swift; sourceTree = "<group>"; };
 		A084D3F12C2060470087BEAF /* DocumentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentHandler.swift; sourceTree = "<group>"; };
 		A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadModelAndMetadata.swift; sourceTree = "<group>"; };
@@ -113,7 +113,7 @@
 				A01492142C255BB700E1C66F /* pp_data.txt */,
 				A01492152C255BB800E1C66F /* te_data.txt */,
 				A01492132C255BB700E1C66F /* tt_data.txt */,
-				A014921B2C255BDA00E1C66F /* default_model.tflite */,
+				A014921D2C2942D400E1C66F /* default_model.tflite */,
 				A00CA5FA2BFDBF6500106C7A /* Assets.xcassets */,
 				A00CA5FC2BFDBF6500106C7A /* Preview Content */,
 			);
@@ -198,7 +198,7 @@
 				A01492172C255BB800E1C66F /* tt_data.txt in Resources */,
 				A01492192C255BB800E1C66F /* te_data.txt in Resources */,
 				A01492182C255BB800E1C66F /* pp_data.txt in Resources */,
-				A014921C2C255BDA00E1C66F /* default_model.tflite in Resources */,
+				A014921E2C2942D400E1C66F /* default_model.tflite in Resources */,
 				A00CA5FB2BFDBF6500106C7A /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -50,6 +50,53 @@ public struct Drawer<Menu: View, Content: View>: View {
 
 
 
+struct LiteratureView: View {
+    var body: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Literature")
+                    .font(.largeTitle)
+                    .bold()
+                    .padding(.top, 20)
+
+                Divider()
+                
+                ScrollView {
+                    Text("CMB")
+                        .font(.title2)
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text("Below are some useful links for learning the physics behind the CMB spectrum:")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer()
+                    Link("Wayne Hu: Guide to the Acoustic Peaks and Polarization", destination: URL(string: "http://background.uchicago.edu/~whu/intermediate/intermediate.html")!)
+                    Spacer()
+                    Link("Gawiser and Silk: The Cosmic Microwave Background Radiation", destination: URL(string: "https://ned.ipac.caltech.edu/level5/Sept05/Gawiser2/Gawiser_contents.html")!)
+                    
+                    Divider()
+                    
+                    Text("Emulation")
+                        .font(.title2)
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Below are the links to the CONNECT papers describing the emulation framework and its features:")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer()
+                    Link("CONNECT: A neural network based framework for emulating cosmological observables and cosmological parameter inference", destination: URL(string: "https://arxiv.org/abs/2205.15726")!)
+                    Spacer()
+                    Link("Fast and effortless computation of profile likelihoods using CONNECT", destination: URL(string: "https://arxiv.org/abs/2308.06379")!)
+                    Spacer()
+                    Link("Cutting corners: Hypersphere sampling as a new standard for cosmological emulators", destination: URL(string: "https://arxiv.org/abs/2405.01396")!)
+                }
+                
+                
+                Spacer()
+            }
+            .padding()
+        }
+    }
+}
 
 
 struct CreditsView: View {
