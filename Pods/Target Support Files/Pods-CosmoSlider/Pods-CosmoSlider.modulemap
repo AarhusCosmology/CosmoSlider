@@ -1,6 +1,0 @@
-framework module Pods_CosmoSlider {
-  umbrella header "Pods-CosmoSlider-umbrella.h"
-
-  export *
-  module * { export * }
-}

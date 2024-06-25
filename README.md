@@ -1,2 +1,2 @@
-# CosmoSlider
-Source code for the CosmoSlider app using CONNECT networks to display observables.
+# Privacy policy for CosmoSlider
+Source code for the privacy policy page
