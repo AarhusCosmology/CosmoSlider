@@ -17,9 +17,12 @@ extension ContentView {
         var zipFilePath: String?
         if selectedModel == "/default_model.tflite" {
             zipFilePath = Bundle.main.path(forResource: "default_model", ofType: "tflite")
+        } else if selectedModel == "/testing_out.tflite" {
+            zipFilePath = Bundle.main.path(forResource: "testing_out", ofType: "tflite")
         } else {
             zipFilePath = selectedModel
         }
+        print(zipFilePath!)
         guard let path = zipFilePath else {
             print("Failed to load metadata")
             return
@@ -111,7 +114,6 @@ extension ContentView {
                 } else {
                     if !key.isEmpty {
                         xValues[key] = values
-                        print()
                     }
                     key = line.replacingOccurrences(of: ":", with: "")
                     values = []
@@ -146,16 +148,32 @@ extension ContentView {
             
             // each line is of the form "name, i_start, i_end". If the name does not begin with "derived", the line should be added to the dictionary outputIndices in the following way [name: (i_start, i_end)]
             
+            optionsDictionary.removeAll()
             options = []
             for line in linesOutputIndices {
                 let components = line.components(separatedBy: ", ")
-                if components[0].hasPrefix("derived") {
+                guard components.count >= 3,
+                    let i_start = Int(components[1]),
+                    let i_end = Int(components[2]),
+                    (i_end - i_start) > 2
+                else {
                     continue
                 }
-                if components.count > 2, let i_start = Int(components[1]), let i_end = Int(components[2]) {
-                    outputIndices[components[0]] = (i_start, i_end)
-                    options.append(components[0].components(separatedBy: "_")[1...].joined(separator: "_").uppercased())
-                }
+                outputIndices[components[0]] = (i_start, i_end)
+                let typeKey = String(components[0].split(separator: "_")[0])
+                let typeValue =
+                    typeKey == "Cl"
+                    ? components[0]
+                        .split(separator: "_")
+                        .dropFirst()
+                        .joined(separator: "_")
+                        .uppercased()
+                    : components[0]
+                        .split(separator: "_")
+                        .dropFirst()
+                        .joined(separator: "_")
+                options.append(typeValue)
+                optionsDictionary[typeKey, default: []].append(typeValue)
             }
             
             // if selectedOption is not in options, it should be set to the first entry of options
@@ -214,7 +232,6 @@ extension ContentView {
                 let tempSVGPath = tempDirectory.appendingPathComponent(names[index])
                 
                 guard let entry = archive[names[index]] else {
-                    print(names[index])
                     print("svg file not found in the archive")
                     return
                 }
@@ -246,6 +263,8 @@ extension ContentView {
         var zipFilePath: String?
         if selectedModel == "/default_model.tflite" {
             zipFilePath = Bundle.main.path(forResource: "default_model", ofType: "tflite")
+        } else if selectedModel == "/testing_out.tflite" {
+            zipFilePath = Bundle.main.path(forResource: "testing_out", ofType: "tflite")
         } else {
             zipFilePath = selectedModel
         }

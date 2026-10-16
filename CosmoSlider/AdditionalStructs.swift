@@ -35,32 +35,65 @@ struct SuperscriptTextView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            Text(base)
-                .font(.system(size: 12)) // Base number font size
-            Text(exponent)
-                .font(.system(size: 9)) // Exponent font size
-                .baselineOffset(5) // Adjust the baseline offset to position the exponent as a superscript
+        ZStack(alignment: .bottomLeading) {
+            HStack(spacing: 0) {
+                Text(base)
+                    .font(.system(size: 12))
+                
+                Text(exponent)
+                    .font(.system(size: 9))
+                    .baselineOffset(10)
+            }
         }
+        .frame(height: 18, alignment: .bottom)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
+
+struct ScientificTextView: View {
+    let base: String
+    let exponent: String
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(base)
+            Text("×")
+            Text("10")
+            Text(exponent)
+                .font(.system(size: 9))
+                .baselineOffset(10)
+        }
+        .font(.system(size: 12))
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(minWidth: 40, minHeight: 22, alignment: .bottom)
+    }
+}
+
+
 
 struct ErrorBarMark<X: Plottable, Y: Plottable>: ChartContent {
     let x: PlottableValue<X>
     let y: PlottableValue<Y>
     let low: PlottableValue<Y>
     let high: PlottableValue<Y>
+    let markerSize: Double
+    let capSize: Double
     
     init(
         x: PlottableValue<X>,
         y: PlottableValue<Y>,
         low: PlottableValue<Y>,
-        high: PlottableValue<Y>
+        high: PlottableValue<Y>,
+        markerSize: Double = 3,
+        capSize: Double = 2
     ) {
         self.x = x
         self.y = y
         self.low = low
         self.high = high
+        self.markerSize = markerSize
+        self.capSize = capSize
     }
     
     var body: some ChartContent {
@@ -68,29 +101,58 @@ struct ErrorBarMark<X: Plottable, Y: Plottable>: ChartContent {
             x: x,
             y: y
         )
-        .symbolSize(30)
+        .symbolSize(markerSize*10)
         RectangleMark(
             x: x,
             yStart: low,
             yEnd: high,
-            width: 2
+            width: MarkDimension(floatLiteral: capSize)
         )
     }
 }
 
 
 struct PlotAreaShape: Shape {
+    var exportWidth: CGFloat? = nil
+    var exportHeight: CGFloat? = nil
 
-    func path(in rect: CGRect) -> SwiftUI.Path {
-        var path = SwiftUI.Path()
-        let plotRect = CGRect(
-            x: UIScreen.main.bounds.minX,
-            y: UIScreen.main.bounds.minY,// + UIScreen.main.bounds.height*0.01,
-            width: UIScreen.main.bounds.width,
-            height: UIScreen.main.bounds.height * 0.4 - (1-0.836)*896.0*0.4
-        )
-        path.addRect(plotRect)
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(plotRect(for: rect))
         return path
     }
+
+    func plotRect(for rect: CGRect) -> CGRect {
+        if let w = exportWidth, let h = exportHeight {
+            return CGRect(x: 0, y: 0, width: w, height: h)
+        } else {
+            return CGRect(
+                x: UIScreen.main.bounds.minX,
+                y: UIScreen.main.bounds.minY,
+                width: UIScreen.main.bounds.width,
+                height: UIScreen.main.bounds.height * 0.4 - (1-0.836)*896.0*0.4
+            )
+        }
+    }
+
+    var x: CGFloat { plotRect(for: .zero).minX }
+    var y: CGFloat { plotRect(for: .zero).minY }
+    var width: CGFloat { plotRect(for: .zero).width }
+    var height: CGFloat { plotRect(for: .zero).height }
+}
+
+
+struct ChartStyle {
+    var exportWidth: Double = 1200
+    var exportHeight: Double = 800
+
+    var lineColor: Color = .blue
+    var lineOpacity: Double = 1.0
+    var lineWidth: Double = 2.0
+
+    var errorBarColor: Color = .green
+    var errorBarOpacity: Double = 0.5
+    var errorBarMarkerSize: Double = 3.0
+    var errorBarCapSize: Double = 2.0
 }
 

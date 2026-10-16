@@ -32,6 +32,8 @@
 	</array>
 	<key>NSFileProtection</key>
 	<string>NSFileProtectionCompleteUnlessOpen</string>
+	<key>UIDesignRequiresCompatibility</key>
+	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UTExportedTypeDeclarations</key>

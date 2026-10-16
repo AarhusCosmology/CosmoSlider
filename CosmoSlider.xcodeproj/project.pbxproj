@@ -23,6 +23,10 @@
 		A084D3FA2C20634E0087BEAF /* PickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3F92C20634E0087BEAF /* PickerButton.swift */; };
 		A084D3FC2C20637D0087BEAF /* AdditionalStructs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */; };
 		A099FB0B2C198378008B4575 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A099FB0A2C198378008B4575 /* ZIPFoundation */; };
+		E17E868C2F22804C00596484 /* pk_boss.txt in Resources */ = {isa = PBXBuildFile; fileRef = E17E868B2F22804C00596484 /* pk_boss.txt */; };
+		E17E868E2F238BE800596484 /* Chart.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17E868D2F238BD500596484 /* Chart.swift */; };
+		E17E86902F28DB2600596484 /* AdditionalFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17E868F2F28DB1500596484 /* AdditionalFunctions.swift */; };
+		E17E86922F2A36C700596484 /* testing_out.tflite in Resources */ = {isa = PBXBuildFile; fileRef = E17E86912F2A36C700596484 /* testing_out.tflite */; };
 		F8463F0DEA761E910ED090D6 /* Pods_CosmoSlider.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25703D71C12BBC1089704A1F /* Pods_CosmoSlider.framework */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +51,10 @@
 		A084D3F72C2062FF0087BEAF /* SideMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenu.swift; sourceTree = "<group>"; };
 		A084D3F92C20634E0087BEAF /* PickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerButton.swift; sourceTree = "<group>"; };
 		A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalStructs.swift; sourceTree = "<group>"; };
+		E17E868B2F22804C00596484 /* pk_boss.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = pk_boss.txt; sourceTree = "<group>"; };
+		E17E868D2F238BD500596484 /* Chart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chart.swift; sourceTree = "<group>"; };
+		E17E868F2F28DB1500596484 /* AdditionalFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalFunctions.swift; sourceTree = "<group>"; };
+		E17E86912F2A36C700596484 /* testing_out.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = testing_out.tflite; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,17 +111,21 @@
 				A00CA7082C0873B900106C7A /* CosmoSlider-Info.plist */,
 				A00CA5F62BFDBF6200106C7A /* CosmoSliderApp.swift */,
 				A00CA5F82BFDBF6200106C7A /* ContentView.swift */,
+				A084D3F72C2062FF0087BEAF /* SideMenu.swift */,
+				E17E868D2F238BD500596484 /* Chart.swift */,
+				A084D3F92C20634E0087BEAF /* PickerButton.swift */,
 				A084D3C92C1ACE890087BEAF /* SVGImage.swift */,
 				A084D3F32C2060880087BEAF /* LoadModelAndMetadata.swift */,
 				A084D3F12C2060470087BEAF /* DocumentHandler.swift */,
-				A084D3F92C20634E0087BEAF /* PickerButton.swift */,
 				A084D3FB2C20637D0087BEAF /* AdditionalStructs.swift */,
-				A084D3F72C2062FF0087BEAF /* SideMenu.swift */,
+				E17E868F2F28DB1500596484 /* AdditionalFunctions.swift */,
 				A01492162C255BB800E1C66F /* ee_data.txt */,
 				A01492142C255BB700E1C66F /* pp_data.txt */,
 				A01492152C255BB800E1C66F /* te_data.txt */,
+				E17E868B2F22804C00596484 /* pk_boss.txt */,
 				A01492132C255BB700E1C66F /* tt_data.txt */,
 				A014921D2C2942D400E1C66F /* default_model.tflite */,
+				E17E86912F2A36C700596484 /* testing_out.tflite */,
 				A00CA5FA2BFDBF6500106C7A /* Assets.xcassets */,
 				A00CA5FC2BFDBF6500106C7A /* Preview Content */,
 			);
@@ -193,8 +205,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E17E86922F2A36C700596484 /* testing_out.tflite in Resources */,
 				A014921A2C255BB800E1C66F /* ee_data.txt in Resources */,
 				A00CA5FE2BFDBF6500106C7A /* Preview Assets.xcassets in Resources */,
+				E17E868C2F22804C00596484 /* pk_boss.txt in Resources */,
 				A01492172C255BB800E1C66F /* tt_data.txt in Resources */,
 				A01492192C255BB800E1C66F /* te_data.txt in Resources */,
 				A01492182C255BB800E1C66F /* pp_data.txt in Resources */,
@@ -240,6 +254,8 @@
 				A084D3F22C2060470087BEAF /* DocumentHandler.swift in Sources */,
 				A084D3F82C2062FF0087BEAF /* SideMenu.swift in Sources */,
 				A084D3CA2C1ACE890087BEAF /* SVGImage.swift in Sources */,
+				E17E868E2F238BE800596484 /* Chart.swift in Sources */,
+				E17E86902F28DB2600596484 /* AdditionalFunctions.swift in Sources */,
 				A00CA5F72BFDBF6200106C7A /* CosmoSliderApp.swift in Sources */,
 				A084D3FA2C20634E0087BEAF /* PickerButton.swift in Sources */,
 				A084D3FC2C20637D0087BEAF /* AdditionalStructs.swift in Sources */,

@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+import TensorFlowLite
 
 
 public struct Drawer<Menu: View, Content: View>: View {
@@ -350,3 +351,326 @@ struct HelpView: View {
         }
     }
 }
+
+
+struct ChartStyleSheet: View {
+    @Binding var isOpened: Bool
+    @Binding var style: ChartStyle
+
+    var body: some View {
+        NavigationView {
+            Form {
+                // MARK: - Export size
+                Section(header: Text("Export Size")) {
+                    HStack {
+                        Text("Width")
+                        Spacer()
+                        TextField("", value: $style.exportWidth, format: .number)
+                            .keyboardType(.numberPad)
+                            .frame(width: 100)
+                    }
+                    
+                    HStack {
+                        Text("Height")
+                        Spacer()
+                        TextField("", value: $style.exportHeight, format: .number)
+                            .keyboardType(.numberPad)
+                            .frame(width: 100)
+                    }
+                }
+                
+                // MARK: - Line plot
+                Section(header: Text("Line Plot")) {
+                    ColorPicker("Color", selection: $style.lineColor)
+                    
+                    HStack {
+                        Text("Opacity")
+                        Slider(value: $style.lineOpacity, in: 0...1)
+                        Text(style.lineOpacity, format: .number.precision(.fractionLength(2)))
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Line Width")
+                        Slider(value: $style.lineWidth, in: 0.5...6)
+                        Text(style.lineWidth, format: .number.precision(.fractionLength(1)))
+                            .frame(width: 40)
+                    }
+                }
+                
+                // MARK: - Error bars
+                Section(header: Text("Error Bars")) {
+                    ColorPicker("Color", selection: $style.errorBarColor)
+                    
+                    HStack {
+                        Text("Opacity")
+                        Slider(value: $style.errorBarOpacity, in: 0...1)
+                        Text(style.errorBarOpacity, format: .number.precision(.fractionLength(2)))
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Marker Size")
+                        Slider(value: $style.errorBarMarkerSize, in: 1.0...5.0)
+                        Text(style.errorBarMarkerSize, format: .number.precision(.fractionLength(1)))
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Cap Size")
+                        Slider(value: $style.errorBarCapSize, in: 0.5...4.0)
+                        Text(style.errorBarCapSize, format: .number.precision(.fractionLength(1)))
+                            .frame(width: 40)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Style")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        isOpened.toggle()
+                    } label: {
+                        Image(systemName: "arrow.left.circle.fill")
+                            .font(.system(size: 24))
+                    }
+                }
+            }
+            .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+}
+
+struct AddGraphSheet: View {
+    @Binding var isOpened: Bool
+    @Binding var data: [GraphData]
+    @Binding var style: ChartStyle
+    @Binding var dataDictionary: [String: [String: [String: [GraphData]]]]
+    @Binding var styleDictionary: [String: ChartStyle]
+    @Binding var graphOrder: [String]
+    @Binding var optionsDictionary: [String: [String]]
+    @Binding var parameters: [Double]
+    @Binding var xArrayDictionary: [String: [Double]]
+    @Binding var interpreter: Interpreter?
+    @Binding var outputIndices: [String: (Int, Int)]
+    
+    @State var legendLabel: String = ""
+    @State private var editLabel: String = ""
+    @State private var showingEditAlert = false
+    @State private var selectedKey: String? = nil
+    @State private var showDuplicateLegendAlert = false
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Lock current graph in chart")) {
+                    HStack {
+                        Text("Legend label")
+                        Spacer()
+                        TextField("Enter label", text: $legendLabel)
+                            .frame(width: 150)
+                    }
+                    
+                    Button(action: addGraph) {
+                        Text("Add graph")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                Section(header: Text("Saved Graphs")) {
+                    List {
+                        ForEach(graphOrder, id: \.self) { key in
+                            Text(key)
+                                .contextMenu {
+                                    Button("Edit") {
+                                        selectedKey = key
+                                        editLabel = key
+                                        showingEditAlert = true
+                                    }
+                                    Button("Delete", role: .destructive) {
+                                        deleteGraph(key: key)
+                                    }
+                                }
+                        }
+                        .onDelete { indexSet in
+                            indexSet.forEach { index in
+                                let key = dataDictionary.keys.sorted()[index]
+                                deleteGraph(key: key)
+                            }
+                        }
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Style")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        isOpened.toggle()
+                    } label: {
+                        Image(systemName: "arrow.left.circle.fill")
+                            .font(.system(size: 24))
+                    }
+                }
+            }
+            .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .alert("Edit Label", isPresented: $showingEditAlert, actions: {
+                TextField("Label", text: $editLabel)
+                Button("Save") {
+                    if let key = selectedKey, !editLabel.isEmpty {
+                        editGraphLabel(oldKey: key, newKey: editLabel)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            })
+            .alert("Duplicate Legend Label",
+                   isPresented: $showDuplicateLegendAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Each graph must have a unique legend label.")
+            }
+        }
+    }
+    
+    func addGraph() {
+        guard !legendLabel.isEmpty else { return }
+
+        if graphOrder.contains(legendLabel) {
+            showDuplicateLegendAlert = true
+            return
+        }
+
+        dataDictionary[legendLabel] = [:]
+
+        for observable in optionsDictionary.keys.sorted() {
+            dataDictionary[legendLabel]?[observable] = [:]
+
+            for option in (optionsDictionary[observable] ?? []).sorted() {
+                dataDictionary[legendLabel]?[observable]?[option] =
+                    updateGraphData(
+                        observable: observable,
+                        option: option,
+                        parameters: parameters,
+                        xArrayDictionary: xArrayDictionary,
+                        outputIndices: outputIndices,
+                        interpreter: interpreter!
+                    )
+            }
+        }
+
+
+        styleDictionary[legendLabel] = style
+        graphOrder.append(legendLabel)
+        legendLabel = ""
+    }
+
+    
+    func deleteGraph(key: String) {
+        dataDictionary.removeValue(forKey: key)
+        styleDictionary.removeValue(forKey: key)
+        if let index = graphOrder.firstIndex(of: key) {
+            graphOrder.remove(at: index)
+        }
+    }
+    
+    func editGraphLabel(oldKey: String, newKey: String) {
+        guard oldKey != newKey else { return }
+        guard !graphOrder.contains(newKey) else {
+            showDuplicateLegendAlert = true
+            return
+        }
+        guard
+            let graphData = dataDictionary.removeValue(forKey: oldKey),
+            let chartStyle = styleDictionary.removeValue(forKey: oldKey),
+            let index = graphOrder.firstIndex(of: oldKey)
+        else {
+            return
+        }
+        dataDictionary[newKey] = graphData
+        styleDictionary[newKey] = chartStyle
+        graphOrder[index] = newKey
+    }
+}
+
+
+
+struct ExportNameAlert: View {
+    @Binding var isPresented: Bool
+    @Binding var fileName: String
+    let onExport: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        ZStack {
+            // Dimmed background (system-like)
+            Color.black.opacity(colorScheme == .dark ? 0.5 : 0.2)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    isPresented = false
+                }
+
+            VStack(spacing: 0) {
+                // MARK: - Title + text field
+                VStack(spacing: 12) {
+                    Text("Export PDF")
+                        .font(.headline)
+                        .padding(.top, 16)
+
+                    TextField("chart.pdf", text: $fileName)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($isFocused)
+                        .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 16)
+
+                Divider()
+
+                // MARK: - Buttons
+                HStack(spacing: 0) {
+                    Button {
+                        isPresented = false
+                    } label: {
+                        Text("Cancel")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .foregroundColor(.red)
+                    }
+
+                    Divider()
+
+                    Button {
+                        onExport()
+                        isPresented = false
+                    } label: {
+                        Text("Export")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .bold()
+                    }
+                }
+                .frame(height: 44)
+            }
+            .frame(width: 270)
+            .background(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(Color(white: colorScheme == .dark ? 0.13 : 0.94))
+            )
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isFocused = true
+            }
+        }
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.2), value: isPresented)
+    }
+}
+
+
