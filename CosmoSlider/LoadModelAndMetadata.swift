@@ -150,35 +150,65 @@ extension ContentView {
             
             optionsDictionary.removeAll()
             options = []
+            outputIndices.removeAll(keepingCapacity: true)
+
+            // Preserve the order in which observables appear in the model metadata.
+            var observableOrder: [String] = []
+
             for line in linesOutputIndices {
                 let components = line.components(separatedBy: ", ")
+
                 guard components.count >= 3,
-                    let i_start = Int(components[1]),
-                    let i_end = Int(components[2]),
-                    (i_end - i_start) > 2
+                      let i_start = Int(components[1]),
+                      let i_end = Int(components[2]),
+                      (i_end - i_start) > 2
                 else {
                     continue
                 }
-                outputIndices[components[0]] = (i_start, i_end)
-                let typeKey = String(components[0].split(separator: "_")[0])
-                let typeValue =
-                    typeKey == "Cl"
-                    ? components[0]
+
+                let outputName = components[0]
+                let typeKey = String(outputName.split(separator: "_").first ?? "")
+
+                outputIndices[outputName] = (i_start, i_end)
+
+                // Derived entries are not selectable observables.
+                if !outputName.hasPrefix("derived"),
+                   !observableOrder.contains(typeKey) {
+                    observableOrder.append(typeKey)
+                }
+
+                let typeValue: String
+
+                if typeKey == "Cl" {
+                    typeValue = outputName
                         .split(separator: "_")
                         .dropFirst()
                         .joined(separator: "_")
                         .uppercased()
-                    : components[0]
+                } else {
+                    typeValue = outputName
                         .split(separator: "_")
                         .dropFirst()
                         .joined(separator: "_")
+                }
+
                 options.append(typeValue)
                 optionsDictionary[typeKey, default: []].append(typeValue)
             }
-            
-            // if selectedOption is not in options, it should be set to the first entry of options
-            if !options.contains(selectedOption) {
-                selectedOption = options[0]
+
+            // If the current observable is not available in this model,
+            // switch to the first available observable in network output order.
+            if !observableOrder.contains(selectedObservable),
+               let firstObservable = observableOrder.first {
+                selectedObservable = firstObservable
+            }
+
+            // Make sure the selected option belongs to the selected observable.
+            let availableOptions = optionsDictionary[selectedObservable] ?? []
+
+            if !availableOptions.contains(selectedOption),
+               let firstOption = availableOptions.first {
+                selectedOption = firstOption
             }
             
             try fileManager.removeItem(at: tempOutputIndicesPath)
