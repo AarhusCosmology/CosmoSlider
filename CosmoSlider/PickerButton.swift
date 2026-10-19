@@ -13,6 +13,7 @@ struct PickerButton: View {
     @Binding var selectedOption: String
     @Binding var selectedObservable: String
     @Binding var optionsDictionary: [String: [String]]
+    @Binding var axisData: [GraphData]
 
     let labelDictionary: [String: String] = [
         "Cl" : "CMB power spectra",
@@ -46,6 +47,11 @@ struct PickerButton: View {
                 Menu("Change Observable…") {
                     ForEach(optionsDictionary.keys.sorted(), id: \.self) { key in
                         Button {
+                            // Temporary safe range while the new observable is prepared.
+                            axisData = [
+                                GraphData(xValue: 0, yValue: -1),
+                                GraphData(xValue: 1, yValue: 1)
+                            ]
                             selectedObservable = key
                             if let firstOption = optionsDictionary[key]?.first {
                                 selectedOption = firstOption
@@ -79,10 +85,10 @@ struct PickerButton: View {
                     let name = selectedOption.split(separator: "_").dropLast().joined(separator: "_")
                     VStack(alignment: .center) {
                         Text(name)
-                            .font(.system(size: 18))
+                            .font(.system(size: 16))
                             .bold()
                         Text("z = \(redshift)")
-                            .font(.system(size: 14))
+                            .font(.system(size: 10))
                     }
                 } else {
                     Text(selectedOption == "PP" ? "𝜑𝜑" : selectedOption)

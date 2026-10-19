@@ -28,24 +28,22 @@ struct GraphData: Identifiable {
 struct SuperscriptTextView: View {
     let base: String
     let exponent: String
-
-    init(base: String, exponent: String) {
-        self.base = base
-        self.exponent = exponent
-    }
+    var fontDesign: Font.Design = .default
+    var fontSize: CGFloat = 12
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            HStack(spacing: 0) {
-                Text(base)
-                    .font(.system(size: 12))
-                
-                Text(exponent)
-                    .font(.system(size: 9))
-                    .baselineOffset(10)
-            }
+        HStack(spacing: 0) {
+            Text(base)
+                .font(.system(size: fontSize, design: fontDesign))
+
+            Text(exponent)
+                .font(.system(
+                    size: fontSize * 0.75,
+                    design: fontDesign
+                ))
+                .baselineOffset(fontSize * 0.8)
         }
-        .frame(height: 18, alignment: .bottom)
+        .frame(height: fontSize * 1.5, alignment: .bottom)
         .fixedSize(horizontal: true, vertical: false)
     }
 }
@@ -141,6 +139,45 @@ struct PlotAreaShape: Shape {
     var height: CGFloat { plotRect(for: .zero).height }
 }
 
+enum AxisTickFont: String, CaseIterable, Identifiable {
+    case system = "System"
+    case serif = "Serif"
+    case rounded = "Rounded"
+    case monospaced = "Monospaced"
+
+    var id: String { rawValue }
+
+    var design: Font.Design {
+        switch self {
+        case .system:    return .default
+        case .serif:     return .serif
+        case .rounded:   return .rounded
+        case .monospaced: return .monospaced
+        }
+    }
+
+    func font(size: CGFloat) -> Font {
+        .system(size: size, design: design)
+    }
+}
+
+enum LinePattern: String, CaseIterable, Identifiable {
+    case solid = "Solid"
+    case dashed = "Dashed"
+    case dotted = "Dotted"
+    case dashDot = "Dash-dotted"
+
+    var id: String { rawValue }
+
+    var dashPattern: [CGFloat] {
+        switch self {
+        case .solid:     return []
+        case .dashed:    return [8, 4]
+        case .dotted:    return [1, 3]
+        case .dashDot:   return [8, 3, 1, 3]
+        }
+    }
+}
 
 struct ChartStyle {
     var exportWidth: Double = 1200
@@ -154,5 +191,53 @@ struct ChartStyle {
     var errorBarOpacity: Double = 0.5
     var errorBarMarkerSize: Double = 3.0
     var errorBarCapSize: Double = 2.0
+    
+    var axisColor: Color = .gray
+    var tickLabelFont: AxisTickFont = .system
+    var tickLabelFontSize: Double = 12
+    var linePattern: LinePattern = .solid
+
+    var exportPaddingTop: Double = 40
+    var exportPaddingBottom: Double = 40
+    var exportPaddingLeft: Double = 40
+    var exportPaddingRight: Double = 40
+
+    var exportBackgroundColor: Color = .white
+    
+    func resolvedExportInsets(
+        pageWidth: CGFloat,
+        pageHeight: CGFloat
+    ) -> EdgeInsets {
+        let top = max(0, CGFloat(exportPaddingTop))
+        let bottom = max(0, CGFloat(exportPaddingBottom))
+        let left = max(0, CGFloat(exportPaddingLeft))
+        let right = max(0, CGFloat(exportPaddingRight))
+
+        // Reserve at least 120 points for the chart content when possible.
+        let availableHorizontal = max(0, pageWidth - 120)
+        let requestedHorizontal = left + right
+
+        let horizontalFactor: CGFloat =
+            requestedHorizontal > availableHorizontal &&
+            requestedHorizontal > 0
+            ? availableHorizontal / requestedHorizontal
+            : 1
+
+        let availableVertical = max(0, pageHeight - 120)
+        let requestedVertical = top + bottom
+
+        let verticalFactor: CGFloat =
+            requestedVertical > availableVertical &&
+            requestedVertical > 0
+            ? availableVertical / requestedVertical
+            : 1
+
+        return EdgeInsets(
+            top: top * verticalFactor,
+            leading: left * horizontalFactor,
+            bottom: bottom * verticalFactor,
+            trailing: right * horizontalFactor
+        )
+    }
 }
 

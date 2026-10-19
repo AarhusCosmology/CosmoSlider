@@ -133,7 +133,7 @@ struct CreditsView: View {
                     .font(.title2)
                     .bold()
 
-                Text("This application was developed at Aarhus University, Denmark, utilizing the CONNECT framework for emulation as a cornerstone of its design. The development was supported by research grant no. 29337 from VILLUM FONDEN.")
+                Text("This application was developed at Aarhus University, Denmark, utilizing the CONNECT framework for emulation as a cornerstone of its design. The development was supported by research grant no. 29337 from VILLUM FONDEN. \n\nThe application was further improved at the University of Zurich, Switzerland, supported by the CF24-1944 grant from the Carlsberg Foundation.")
 
                 Spacer()
             }
@@ -338,7 +338,7 @@ struct HelpView: View {
                     
                     Divider()
                     
-                    Text("Above the graph are a few visualisation options. The \"Show data\" button toggles the visibility of Planck 2018 data for the TT, TE, and EE spectra and SPT data for the 𝜑𝜑 spectrum. Next to this is a button for choosing the plotted spectrum. The last button resets the position of the sliders to the best-fit point determined by an optimisation using the Planck Lite likelihood.")
+                    Text("Above the graph are a few visualisation options. The \"Show data\" button toggles the visibility of Planck 2018 data for the TT, TE, and EE spectra and SPT data for the 𝜑𝜑 spectrum. Next to this is a button for choosing the plotted observable. The last button resets the position of the sliders to the best-fit point determined by an optimisation using the Planck Lite likelihood.\n\nThe side menu includes options for chainging the style of the graph and the chart as well as adding additional graphs to the chart. There is also an option for exporting the current chart as a PDF.")
                     
                     Divider()
                     
@@ -360,28 +360,15 @@ struct ChartStyleSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                // MARK: - Export size
-                Section(header: Text("Export Size")) {
-                    HStack {
-                        Text("Width")
-                        Spacer()
-                        TextField("", value: $style.exportWidth, format: .number)
-                            .keyboardType(.numberPad)
-                            .frame(width: 100)
-                    }
-                    
-                    HStack {
-                        Text("Height")
-                        Spacer()
-                        TextField("", value: $style.exportHeight, format: .number)
-                            .keyboardType(.numberPad)
-                            .frame(width: 100)
-                    }
-                }
-                
                 // MARK: - Line plot
                 Section(header: Text("Line Plot")) {
                     ColorPicker("Color", selection: $style.lineColor)
+                    
+                    Picker("Line Style", selection: $style.linePattern) {
+                        ForEach(LinePattern.allCases) { pattern in
+                            Text(pattern.rawValue).tag(pattern)
+                        }
+                    }
                     
                     HStack {
                         Text("Opacity")
@@ -397,6 +384,35 @@ struct ChartStyleSheet: View {
                             .frame(width: 40)
                     }
                 }
+                
+                // MARK: - Axes and tick labels
+                Section(header: Text("Axes & Tick Labels")) {
+                    ColorPicker(
+                        "Axis and Tick Color",
+                        selection: $style.axisColor
+                    )
+
+                    Picker("Tick Label Font", selection: $style.tickLabelFont) {
+                        ForEach(AxisTickFont.allCases) { font in
+                            Text(font.rawValue).tag(font)
+                        }
+                    }
+
+                    HStack {
+                        Text("Tick Label Size")
+                        Slider(
+                            value: $style.tickLabelFontSize,
+                            in: 8...20,
+                            step: 1
+                        )
+                        Text(
+                            "\(Int(style.tickLabelFontSize)) pt"
+                        )
+                        .monospacedDigit()
+                        .frame(width: 45, alignment: .trailing)
+                    }
+                }
+
                 
                 // MARK: - Error bars
                 Section(header: Text("Error Bars")) {
@@ -423,6 +439,54 @@ struct ChartStyleSheet: View {
                             .frame(width: 40)
                     }
                 }
+                
+                // MARK: - Export size
+                Section(header: Text("Export Size")) {
+                    HStack {
+                        Text("Width")
+                        Spacer()
+                        TextField("", value: $style.exportWidth, format: .number)
+                            .keyboardType(.numberPad)
+                            .frame(width: 100)
+                    }
+                    
+                    HStack {
+                        Text("Height")
+                        Spacer()
+                        TextField("", value: $style.exportHeight, format: .number)
+                            .keyboardType(.numberPad)
+                            .frame(width: 100)
+                    }
+                }
+                
+                // MARK: - Export Layout
+                Section(header: Text("Export Layout")) {
+                    ColorPicker(
+                        "Background Color",
+                        selection: $style.exportBackgroundColor,
+                        supportsOpacity: false
+                    )
+
+                    exportPaddingControl(
+                        "Top",
+                        value: $style.exportPaddingTop
+                    )
+
+                    exportPaddingControl(
+                        "Bottom",
+                        value: $style.exportPaddingBottom
+                    )
+
+                    exportPaddingControl(
+                        "Left",
+                        value: $style.exportPaddingLeft
+                    )
+
+                    exportPaddingControl(
+                        "Right",
+                        value: $style.exportPaddingRight
+                    )
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Color(.systemGroupedBackground))
@@ -441,6 +505,237 @@ struct ChartStyleSheet: View {
             .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
+    }
+    
+    private func exportPaddingControl(
+        _ title: String,
+        value: Binding<Double>
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .frame(width: 70, alignment: .leading)
+
+            Slider(
+                value: value,
+                in: 0...200,
+                step: 5
+            )
+
+            Text("\(Int(value.wrappedValue)) pt")
+                .monospacedDigit()
+                .frame(width: 48, alignment: .trailing)
+        }
+    }
+    
+}
+
+struct AxisLimitsSheet: View {
+    @Binding var isOpened: Bool
+    @Binding var axisLimits: [Double]
+    @Binding var axisScales: [String]
+    @Binding var mixSplit: Double
+
+    @State private var draftAxisLimits: [Double]
+    @State private var draftAxisScales: [String]
+    @State private var draftMixSplit: Double
+
+    init(
+        isOpened: Binding<Bool>,
+        axisLimits: Binding<[Double]>,
+        axisScales: Binding<[String]>,
+        mixSplit: Binding<Double>
+    ) {
+        _isOpened = isOpened
+        _axisLimits = axisLimits
+        _axisScales = axisScales
+        _mixSplit = mixSplit
+
+        _draftAxisLimits = State(
+            initialValue: axisLimits.wrappedValue
+        )
+        _draftAxisScales = State(
+            initialValue: axisScales.wrappedValue
+        )
+        _draftMixSplit = State(
+            initialValue: mixSplit.wrappedValue
+        )
+    }
+
+    private let scaleOptions = [
+        ("linear", "Linear"),
+        ("log", "Logarithmic"),
+        ("loglin", "Log → Linear"),
+        ("linlog", "Linear → Log")
+    ]
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("X Axis") {
+                    HStack {
+                        Text("Minimum")
+                            .frame(width: 80, alignment: .leading)
+
+                        TextField(
+                            "Value",
+                            value: $draftAxisLimits[0],
+                            format: .number
+                        )
+                        .keyboardType(.numbersAndPunctuation)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.plain)
+                    }
+
+                    HStack {
+                        Text("Maximum")
+                            .frame(width: 80, alignment: .leading)
+
+                        TextField(
+                            "Value",
+                            value: $draftAxisLimits[1],
+                            format: .number
+                        )
+                        .keyboardType(.numbersAndPunctuation)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.plain)
+                    }
+
+                    Picker("Scale", selection: $draftAxisScales[0]) {
+                        ForEach(scaleOptions, id: \.0) { option in
+                            Text(option.1).tag(option.0)
+                        }
+                    }
+                }
+                
+                Section("Y Axis") {
+                    HStack {
+                        Text("Minimum")
+                            .frame(width: 80, alignment: .leading)
+
+                        TextField(
+                            "Value",
+                            value: $draftAxisLimits[2],
+                            format: .number
+                        )
+                        .keyboardType(.numbersAndPunctuation)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.plain)
+                    }
+
+                    HStack {
+                        Text("Maximum")
+                            .frame(width: 80, alignment: .leading)
+
+                        TextField(
+                            "Value",
+                            value: $draftAxisLimits[3],
+                            format: .number
+                        )
+                        .keyboardType(.numbersAndPunctuation)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.plain)
+                    }
+
+                    Picker("Scale", selection: $draftAxisScales[1]) {
+                        ForEach(scaleOptions, id: \.0) { option in
+                            Text(option.1).tag(option.0)
+                        }
+                    }
+                }
+
+                if draftAxisScales.contains("loglin") ||
+                   draftAxisScales.contains("linlog") {
+                    Section("Mixed-Scale Split") {
+                        TextField(
+                            "Split value",
+                            value: $draftMixSplit,
+                            format: .number
+                        )
+                        .keyboardType(.numbersAndPunctuation)
+
+                        Text(
+                            "The split value is shared by any axes using a mixed scale."
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let error = validationError {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Axis Limits")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isOpened = false
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        guard validationError == nil else { return }
+
+                        axisLimits = draftAxisLimits
+                        axisScales = draftAxisScales
+                        mixSplit = draftMixSplit
+                        isOpened = false
+                    }
+                    .disabled(validationError != nil)
+                }
+            }
+        }
+    }
+
+    private var validationError: String? {
+        guard draftAxisLimits.count == 4,
+              draftAxisScales.count == 2 else {
+            return "The axis settings are incomplete."
+        }
+
+        guard draftMixSplit.isFinite else {
+            return "The split value must be finite."
+        }
+
+        for axis in 0..<2 {
+            let lower = draftAxisLimits[axis * 2]
+            let upper = draftAxisLimits[axis * 2 + 1]
+            let scale = draftAxisScales[axis]
+
+            guard lower.isFinite,
+                  upper.isFinite,
+                  lower < upper,
+                  (upper - lower).isFinite else {
+                return "Each axis needs finite limits with minimum less than maximum."
+            }
+
+            if scale == "log" && lower <= 0 {
+                return "Logarithmic axes require positive limits."
+            }
+
+            if scale == "loglin" {
+                guard lower > 0,
+                      lower < draftMixSplit,
+                      draftMixSplit < upper else {
+                    return "For Log → Linear, the split must be between two positive limits."
+                }
+            }
+
+            if scale == "linlog" {
+                guard lower < draftMixSplit,
+                      draftMixSplit > 0,
+                      draftMixSplit < upper else {
+                    return "For Linear → Log, the split must be positive and between the limits."
+                }
+            }
+        }
+
+        return nil
     }
 }
 

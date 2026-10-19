@@ -9,6 +9,13 @@ import SwiftUI
 import TensorFlowLite
 import Foundation
 
+private enum ChartEditorSheet: String, Identifiable {
+    case addGraph
+    case chartStyle
+    case axisLimits
+
+    var id: String { rawValue }
+}
 
 struct ContentView: View {
     @State private var data: [GraphData] = []
@@ -31,13 +38,17 @@ struct ContentView: View {
     @State private var showExportSuccessAlert = false
     @State private var savedFileURL: URL?
     @State private var chartStyle = ChartStyle()
-    @State private var showStyleSheet = false
-    @State private var showAddGraphSheet = false
+    //@State private var showStyleSheet = false
+    //@State private var showAddGraphSheet = false
+    @State private var axisLimits: [Double] = [1e-6, 1.0, 1e-2, 1e6]
+    @State private var axisScales: [String] = ["log", "log"]
+    @State private var mixSplit: Double = 200.0
+    @State private var activeChartSheet: ChartEditorSheet?
     
     @State public var interpreter: Interpreter?
     @State public var selectedModel: String = "/testing_out.tflite"//"/default_model.tflite"
-    @State public var selectedObservable: String = "Pk"//bg"
-    @State public var selectedOption: String = "pk_0.0"//"ang.diam.dist."
+    @State public var selectedObservable: String = "Cl"
+    @State public var selectedOption: String = "TT"
     @State public var optionsDictionary: [String:[String]] = [:]
     @State public var options: [String] = []
     @State public var lowestYValue: Double = 1.0
@@ -147,57 +158,28 @@ struct ContentView: View {
                                 }
                                 Section() {
                                     Button {
-                                        showAddGraphSheet = true
+                                        activeChartSheet = .addGraph
                                     } label: {
                                         Label("Add graph to chart", systemImage: "plus.app")
-                                            .contentShape(Rectangle())
                                     }
-                                    .sheet(isPresented: $showAddGraphSheet) {
-                                        AddGraphSheet(
-                                            isOpened: $showAddGraphSheet,
-                                            data: $data,
-                                            style: $chartStyle,
-                                            dataDictionary: $storedDataDictionary,
-                                            styleDictionary: $storedChartStyleDictionary,
-                                            graphOrder: $graphOrder,
-                                            optionsDictionary: $optionsDictionary,
-                                            parameters: $sliderValues,
-                                            xArrayDictionary: $xValues,
-                                            interpreter: $interpreter,
-                                            outputIndices: $outputIndices
-                                        )
-                                    }
-                                    
+
                                     Button {
-                                        showStyleSheet = true
+                                        activeChartSheet = .chartStyle
                                     } label: {
                                         Label("Edit chart style", systemImage: "square.and.pencil")
-                                            .contentShape(Rectangle())
                                     }
-                                    .sheet(isPresented: $showStyleSheet) {
-                                        ChartStyleSheet(
-                                            isOpened: $showStyleSheet,
-                                            style: $chartStyle
-                                        )
+
+                                    Button {
+                                        activeChartSheet = .axisLimits
+                                    } label: {
+                                        Label("Edit axis limits", systemImage: "slider.horizontal.3")
                                     }
                                     
                                     Button {
-                                        exportFileName = "chart.pdf"
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                            showExportDialog = true
-                                        }
+                                        requestChartExport()
                                     } label: {
                                         Label("Export chart", systemImage: "square.and.arrow.up")
-                                            .contentShape(Rectangle())
                                     }
-                                    .alert("Export complete", isPresented: $showExportSuccessAlert) {
-                                        Button("OK", role: .cancel) { }
-                                    } message: {
-                                        if let url = savedFileURL {
-                                            Text("Saved to:\nFiles ▸ CosmoSlider ▸ \(url.lastPathComponent)")
-                                        }
-                                    }
-                                    
                                 }
                                 Section() {
                                     
@@ -289,7 +271,6 @@ struct ContentView: View {
                                     data: $data,
                                     showObservedData: $showObservedData,
                                     observedData: $observedData,
-                                    axisData: $axisData,
                                     selectedObservable: $selectedObservable,
                                     selectedOption: $selectedOption,
                                     xValues: $xValues,
@@ -299,6 +280,9 @@ struct ContentView: View {
                                     graphOrder: $graphOrder,
                                     lowestYValue: $lowestYValue,
                                     highestYValue: $highestYValue,
+                                    axisLimits: $axisLimits,
+                                    axisScales: $axisScales,
+                                    mixSplit: $mixSplit,
                                     logscale: logscale,
                                     transition: transition,
                                     l_min: l_min,
@@ -306,6 +290,31 @@ struct ContentView: View {
                                     height: graphHeight,
                                     isExporting: false
                                 )
+                                .contextMenu {
+                                    Button {
+                                        activeChartSheet = .addGraph
+                                    } label: {
+                                        Label("Add graph", systemImage: "plus.app")
+                                    }
+
+                                    Button {
+                                        activeChartSheet = .chartStyle
+                                    } label: {
+                                        Label("Edit chart style", systemImage: "square.and.pencil")
+                                    }
+
+                                    Button {
+                                        activeChartSheet = .axisLimits
+                                    } label: {
+                                        Label("Edit axis limits", systemImage: "slider.horizontal.3")
+                                    }
+                                    
+                                    Button {
+                                        requestChartExport()
+                                    } label: {
+                                        Label("Export chart", systemImage: "square.and.arrow.up")
+                                    }
+                                }
                                 
                                 HStack {
                                     Button {
@@ -326,13 +335,8 @@ struct ContentView: View {
                                     
                                     Spacer()
                                     
-                                    PickerButton(selectedOption: $selectedOption, selectedObservable: $selectedObservable, optionsDictionary: $optionsDictionary)
+                                    PickerButton(selectedOption: $selectedOption, selectedObservable: $selectedObservable, optionsDictionary: $optionsDictionary, axisData: $axisData)
                                         .frame(alignment: .center)
-                                        .onChange(of: selectedOption) {
-                                            setDataForGraph()
-                                            updateObservedData()
-                                            updateAxisData()
-                                        }
                                     
                                     Spacer()
                                     
@@ -391,7 +395,7 @@ struct ContentView: View {
                         .onAppear(perform: resetSliders)
                         .onAppear(perform: setYLimitValues)
                         .onAppear(perform: setDataForGraph)
-                        .onAppear(perform: updateAxisData)
+                        .onAppear(perform: setDefaultAxisSettings)
                         .onAppear(perform: updateObservedData)
                         .onAppear(perform: populateDisplayNames)
                         .onChange(of: selectedModel) {
@@ -400,28 +404,75 @@ struct ContentView: View {
                             setYLimitValues()
                             resetSliders()
                             setDataForGraph()
-                            updateAxisData()
+                            setDefaultAxisSettings()
                             updateObservedData()
                         }
                         .onChange(of: selectedOption) {
                             setYLimitValues()
                             setDataForGraph()
-                            updateAxisData()
+                            setDefaultAxisSettings()
                             updateObservedData()
                         }
                     }
                 }
             )
-            
-            if showExportDialog {
-                ExportNameAlert(
-                    isPresented: $showExportDialog,
-                    fileName: $exportFileName,
-                    onExport: {
-                        Task { @MainActor in
-                            await exportChartToFiles()
-                        }
-                    }
+        }
+        .alert("Export PDF", isPresented: $showExportDialog) {
+            TextField("Filename", text: $exportFileName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            Button("Cancel", role: .cancel) {}
+
+            Button("Export") {
+                let trimmedName = exportFileName.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                exportFileName = trimmedName.isEmpty ? "chart.pdf" : trimmedName
+
+                Task { @MainActor in
+                    await exportChartToFiles()
+                }
+            }
+        } message: {
+            Text("Enter a name for the exported PDF.")
+        }
+        .alert("Export complete", isPresented: $showExportSuccessAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let url = savedFileURL {
+                Text("Saved to:\nFiles ▸ CosmoSlider ▸ \(url.lastPathComponent)")
+            }
+        }
+        .sheet(item: $activeChartSheet) { destination in
+            switch destination {
+            case .addGraph:
+                AddGraphSheet(
+                    isOpened: chartSheetPresentedBinding,
+                    data: $data,
+                    style: $chartStyle,
+                    dataDictionary: $storedDataDictionary,
+                    styleDictionary: $storedChartStyleDictionary,
+                    graphOrder: $graphOrder,
+                    optionsDictionary: $optionsDictionary,
+                    parameters: $sliderValues,
+                    xArrayDictionary: $xValues,
+                    interpreter: $interpreter,
+                    outputIndices: $outputIndices
+                )
+
+            case .chartStyle:
+                ChartStyleSheet(
+                    isOpened: chartSheetPresentedBinding,
+                    style: $chartStyle
+                )
+
+            case .axisLimits:
+                AxisLimitsSheet(
+                    isOpened: chartSheetPresentedBinding,
+                    axisLimits: $axisLimits,
+                    axisScales: $axisScales,
+                    mixSplit: $mixSplit
                 )
             }
         }
@@ -451,47 +502,130 @@ struct ContentView: View {
     }
     
     
-    func updateAxisData() {
+    func setDefaultAxisSettings() {
+        mixSplit = 200.0
+
+        let observableKey = observableDictionary[selectedObservable] ?? ""
+        let values = (xValues[observableKey] ?? []).filter {
+            $0.isFinite
+        }
+        let positiveValues = values.filter { $0 > 0 }
+
+        var x0 = values.min() ?? 1e-14
+        var x1 = values.max() ?? 1.0
+
+        if selectedObservable == "Cl" {
+            x0 = 2.0
+            x1 = 2500.0
+        } else if selectedObservable == "Pk" {
+            x0 = positiveValues.min() ?? 1e-6
+            x1 = positiveValues.max() ?? 1.0
+        }
+
+        if x1 <= x0 {
+            x1 = x0 + max(abs(x0) * 0.1, 1e-10)
+        }
+
+        let logXSpan: Double
+        if x0 > 0 && x1 > 0 {
+            logXSpan = abs(log10(x1) - log10(x0))
+        } else {
+            logXSpan = 0
+        }
+
+        let defaultXScale: String
+        if x0 > 0 && x0 < mixSplit && mixSplit < x1 {
+            defaultXScale = "loglin"
+        } else if x0 > 0 && logXSpan > 1 {
+            defaultXScale = "log"
+        } else {
+            defaultXScale = "linear"
+        }
+
         switch selectedObservable {
         case "Cl":
+            let yLimits: (Double, Double)
+
             switch selectedOption {
             case "TT":
-                axisData = [GraphData(xValue: 0, yValue: 0), GraphData(xValue: 1, yValue: 7000)]
+                yLimits = (0, 7000)
             case "TE":
-                axisData = [GraphData(xValue: 0, yValue: -230), GraphData(xValue: 1, yValue: 230)]
+                yLimits = (-230, 230)
             case "EE":
-                axisData = [GraphData(xValue: 0, yValue: -2), GraphData(xValue: 1, yValue: 60)]
+                yLimits = (-2, 60)
             case "PP":
-                axisData = [GraphData(xValue: 0, yValue: 0), GraphData(xValue: 1, yValue: 2.5)]
+                yLimits = (0, 2.5)
             default:
-                axisData = [GraphData(xValue: 0, yValue: 1), GraphData(xValue: 1, yValue: 2)]
+                yLimits = (1, 2)
             }
+
+            axisScales = [defaultXScale, "linear"]
+            axisLimits = [x0, x1, yLimits.0, yLimits.1]
+
         case "Pk":
-            axisData = [GraphData(xValue: log10(xValues[observableDictionary[selectedObservable] ?? ""]?.first ?? -6), yValue: -2), GraphData(xValue: log10(xValues[observableDictionary[selectedObservable] ?? ""]?.last ?? 2), yValue: 6)]
+            axisScales = ["log", "log"]
+
+            // These reproduce the previous log-domain limits of -2...6.
+            axisLimits = [x0, x1, 1e-2, 1e6]
+
         case "bg", "th":
-            let xMin: Double
-            let xMax: Double
-            if let observableKey = observableDictionary[selectedObservable],
-               let values = xValues[observableKey],
-               !values.isEmpty {
-                xMin = values.min()!
-                xMax = values.max()!
+            let low = min(lowestYValue, highestYValue)
+            let high = max(lowestYValue, highestYValue)
+
+            let validYRange =
+                low.isFinite &&
+                high.isFinite &&
+                low > 0 &&
+                high > low
+
+            let logYSpan: Double
+            if validYRange {
+                logYSpan = log10(high) - log10(low)
             } else {
-                xMin = 1e-14
-                xMax = 1
+                logYSpan = 0
             }
-            let yMin: Double
-            let yMax: Double
-            if abs(log10(highestYValue)-log10(lowestYValue)) < 1.0 {
-                yMin = lowestYValue
-                yMax = highestYValue
+
+            let useLogY = validYRange && logYSpan >= 1
+
+            if useLogY {
+                let padding = max(logYSpan * 0.05, 0.05)
+
+                axisScales = [
+                    defaultXScale,
+                    "log"
+                ]
+
+                axisLimits = [
+                    x0,
+                    x1,
+                    pow(10, log10(low) - padding),
+                    pow(10, log10(high) + padding)
+                ]
             } else {
-                yMin = log10(lowestYValue)
-                yMax = log10(highestYValue)
+                let safeLow = low.isFinite ? low : 0
+                let safeHigh = high.isFinite ? high : 1
+                let padding = max(
+                    max(abs(safeLow), abs(safeHigh)) * 0.05,
+                    1e-10
+                )
+                let span = max(safeHigh - safeLow, padding)
+
+                axisScales = [
+                    defaultXScale,
+                    "linear"
+                ]
+
+                axisLimits = [
+                    x0,
+                    x1,
+                    safeLow - 0.1 * span,
+                    safeHigh + 0.2 * span
+                ]
             }
-            axisData = [GraphData(xValue: xMin, yValue: yMin-0.1*abs(yMin)), GraphData(xValue: xMax, yValue: yMax+0.2*abs(yMax))]
+
         default:
-            axisData = [GraphData(xValue: 0, yValue: 0), GraphData(xValue: 1, yValue: 1)]
+            axisScales = ["linear", "linear"]
+            axisLimits = [x0, x1, 0, 1]
         }
     }
 
@@ -600,6 +734,24 @@ struct ContentView: View {
         let finalName = fileName.hasSuffix(".pdf") ? fileName : fileName + ".pdf"
 
         let appFolder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        
+        let pageWidth = max(1, CGFloat(chartStyle.exportWidth))
+        let pageHeight = max(1, CGFloat(chartStyle.exportHeight))
+
+        let exportInsets = chartStyle.resolvedExportInsets(
+            pageWidth: pageWidth,
+            pageHeight: pageHeight
+        )
+
+        let contentWidth = max(
+            1,
+            pageWidth - exportInsets.leading - exportInsets.trailing
+        )
+
+        let contentHeight = max(
+            1,
+            pageHeight - exportInsets.top - exportInsets.bottom
+        )
 
         do {
             if !FileManager.default.fileExists(atPath: appFolder.path) {
@@ -615,7 +767,6 @@ struct ContentView: View {
                 data: $data,
                 showObservedData: $showObservedData,
                 observedData: $observedData,
-                axisData: $axisData,
                 selectedObservable: $selectedObservable,
                 selectedOption: $selectedOption,
                 xValues: $xValues,
@@ -625,18 +776,21 @@ struct ContentView: View {
                 graphOrder: $graphOrder,
                 lowestYValue: $lowestYValue,
                 highestYValue: $highestYValue,
+                axisLimits: $axisLimits,
+                axisScales: $axisScales,
+                mixSplit: $mixSplit,
                 logscale: logscale,
                 transition: transition,
                 l_min: l_min,
-                width: 0.99*chartStyle.exportWidth,
-                height: 0.97*chartStyle.exportHeight,
+                width: contentWidth,
+                height: contentHeight,
                 isExporting: true
             )
 
             try ScientificChartView.exportPDF(
                 chart: exportView,
-                width: chartStyle.exportWidth,
-                height: chartStyle.exportHeight,
+                width: pageWidth,
+                height: pageHeight,
                 url: fileURL
             )
 
@@ -646,6 +800,25 @@ struct ContentView: View {
 
         } catch {
             print("Export failed:", error)
+        }
+    }
+    
+    private var chartSheetPresentedBinding: Binding<Bool> {
+        Binding(
+            get: { activeChartSheet != nil },
+            set: { presented in
+                if !presented {
+                    activeChartSheet = nil
+                }
+            }
+        )
+    }
+    
+    private func requestChartExport() {
+        exportFileName = "chart.pdf"
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            showExportDialog = true
         }
     }
 }

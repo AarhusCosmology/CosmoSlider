@@ -10,12 +10,28 @@ import Charts
 import UniformTypeIdentifiers
 import Foundation
 
+private struct RawAxisTick {
+    let value: Double
+    let label: String?
+}
+
+private struct AxisTickInfo {
+    let position: Double
+    let label: String?
+}
+
+private struct RenderedCurvePoint: Identifiable {
+    let id: String
+    let x: Double
+    let y: Double
+}
+
 struct ScientificChartView: View {
     
     @Binding var data: [GraphData]
     @Binding var showObservedData: Bool
     @Binding var observedData: [GraphData]
-    @Binding var axisData: [GraphData]
+    //@Binding var axisData: [GraphData]
     
     @Binding var selectedObservable: String
     @Binding var selectedOption: String
@@ -30,12 +46,19 @@ struct ScientificChartView: View {
     @Binding var lowestYValue: Double
     @Binding var highestYValue: Double
     
+    @Binding var axisLimits: [Double]
+    @Binding var axisScales: [String]
+    @Binding var mixSplit: Double
+    
     let logscale: Double
     let transition: Double
     let l_min: Double
     let width: CGFloat
     let height: CGFloat
     let isExporting: Bool
+    
+    //private let axisStrokeColor = Color.gray
+    private let majorTickLineWidth: CGFloat = 2
     
     private var validGraphKeys: [String] {
         graphOrder.filter { key in
@@ -78,66 +101,68 @@ struct ScientificChartView: View {
     @ViewBuilder
     private var chartContent: some View {
         Chart {
-            let plotAreaShape = isExporting
-            ? PlotAreaShape(exportWidth: width, exportHeight: height - (1-0.836)*896.0*0.4)
-            : PlotAreaShape()
+            //let plotAreaShape = isExporting
+            //? PlotAreaShape(exportWidth: width, exportHeight: height - (1-0.836)*896.0*0.4)
+            //: PlotAreaShape()
             ForEach(validGraphKeys, id: \.self) { key in
                 if let points = dataDictionary[key]![selectedObservable]![selectedOption] {
-                    ForEach(points) { point in
+                    ForEach(renderCurvePoints(points)) { point in
                         LineMark(
-                            x: .value("X Value", scaleGraphPoint(xPoint: rescaleXCoordinate(point.xValue))),
-                            y: .value("Y Value", rescaleYCoordinate(point.yValue)),
+                            x: .value("X Value", point.x),
+                            y: .value("Y Value", point.y),
                             series: .value("Legend", key)
                         )
                         .interpolationMethod(.cardinal)
-                        .lineStyle(StrokeStyle(lineWidth: styleDictionary[key]?.lineWidth ?? 1))
+                        .lineStyle(
+                            StrokeStyle(
+                                lineWidth: styleDictionary[key]?.lineWidth ?? 1,
+                                dash: styleDictionary[key]?.linePattern.dashPattern ?? []
+                            )
+                        )
                         .foregroundStyle(
                             styleDictionary[key]?.lineColor.opacity(styleDictionary[key]?.lineOpacity ?? 1) ?? .blue
                         )
-                        .clipShape(plotAreaShape)
+                        //.clipShape(plotAreaShape)
                     }
                 }
             }
-            ForEach(data) { point in
+            ForEach(renderCurvePoints(data)) { point in
                 LineMark(
-                    x: .value("X Value", scaleGraphPoint(xPoint:rescaleXCoordinate(point.xValue))),
-                    y: .value("Y Value", rescaleYCoordinate(point.yValue))
+                    x: .value("X Value", point.x),
+                    y: .value("Y Value", point.y)
                 )
-                .lineStyle(StrokeStyle(lineWidth: style.lineWidth))
-                .foregroundStyle(
-                    style.lineColor.opacity(style.lineOpacity)
+                .lineStyle(
+                    StrokeStyle(
+                        lineWidth: style.lineWidth,
+                        dash: style.linePattern.dashPattern
+                    )
                 )
-                .clipShape(plotAreaShape)
+                .foregroundStyle(style.lineColor.opacity(style.lineOpacity))
+                //.clipShape(plotAreaShape)
             }
             .interpolationMethod(.cardinal)
             if showObservedData {
-                ForEach(observedData) { point in
+                ForEach(observedData.filter { isValidPoint($0) }) { point in
                     ErrorBarMark(
-                        x: .value("x", scaleGraphPoint(xPoint: rescaleXCoordinate(point.xValue, data: true))),
-                        y: .value("y", rescaleYCoordinate(point.yValue, data: true)),
-                        low: .value("y", rescaleYCoordinate(point.yValue-point.errNegative, data: true)),
-                        high: .value("y", rescaleYCoordinate(point.yValue+point.errPositive, data: true)),
+                        x: .value("x", plottedX(point.xValue, observed: true)),
+                        y: .value("y", plottedY(point.yValue, observed: true)),
+                        low: .value("y", plottedY(point.yValue-point.errNegative, observed: true)),
+                        high: .value("y", plottedY(point.yValue+point.errPositive, observed: true)),
                         markerSize: style.errorBarMarkerSize,
                         capSize: style.errorBarCapSize
                     )
                     .foregroundStyle(
                         style.errorBarColor.opacity(style.errorBarOpacity)
                     )
-                    .clipShape(plotAreaShape)
+                    //.clipShape(plotAreaShape)
                 }
             }
-            ForEach(axisData) { point in
-                RuleMark(
-                    x: .value("Y Value", point.xValue)
-                )
-                RuleMark(
-                    y: .value("Y Value", point.yValue)
-                )
-            }
-            .foregroundStyle(.gray)
         }
         .chartXScale(domain: getXDomain())
         .chartYScale(domain: getYDomain())
+        .chartPlotStyle { plotArea in
+            plotArea.clipped()
+        }
         .chartXAxis {
             customXAxis()
             customXAxisMinorTicks()
@@ -151,7 +176,7 @@ struct ScientificChartView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: xAxisLabelSize, height: xAxisLabelSize)
-                .foregroundColor(.gray)
+                .foregroundColor(style.axisColor)
                 .padding(-xAxisLabelPad)
         }
         .chartYAxisLabel(position: .leading, alignment: .center) {
@@ -159,7 +184,7 @@ struct ScientificChartView: View {
                 Text(mathify(selectedOption))
                     .scaledToFit()
                     .frame(width: yAxisLabelSize, height: yAxisLabelSize*0.8, alignment: .bottom)
-                    .foregroundColor(.gray)
+                    .foregroundColor(style.axisColor)
                     .rotationEffect(.degrees(180), anchor: .center)
                     .padding(-yAxisLabelPad)
             } else {
@@ -167,16 +192,38 @@ struct ScientificChartView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: yAxisLabelSize, height: yAxisLabelSize, alignment: .bottom)
-                    .foregroundColor(.gray)
+                    .foregroundColor(style.axisColor)
                     .rotationEffect(.degrees(180), anchor: .center)
                     .padding(-yAxisLabelPad)
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrameAnchor = proxy.plotFrame {
+                    let plotFrame = geometry[plotFrameAnchor]
+
+                    Rectangle()
+                        .stroke(
+                            style.axisColor,
+                            lineWidth: majorTickLineWidth
+                        )
+                        .frame(
+                            width: plotFrame.width,
+                            height: plotFrame.height
+                        )
+                        .position(
+                            x: plotFrame.midX,
+                            y: plotFrame.midY
+                        )
+                        .allowsHitTesting(false)
+                }
             }
         }
         .padding(.leading, -yAxisPad)
         .padding(.trailing)
         .frame(height: height)
         .frame(width: width)
-        .padding(.top, 75)
+        .padding(.top, isExporting ? 0 : 75)
     }
     
     @ViewBuilder
@@ -329,264 +376,396 @@ struct ScientificChartView: View {
         }
     }
     
-    func getYDomain() -> ClosedRange<Double> {
-        let lowestYLimit = axisData.min(by: { $0.yValue < $1.yValue })?.yValue ?? 0.0
-        let highestYLimit = axisData.max(by: { $0.yValue < $1.yValue })?.yValue ?? 1.0
-        return lowestYLimit...highestYLimit
-    }
-    
     func getXDomain() -> ClosedRange<Double> {
-        let lowestXLimit = axisData.min(by: { $0.xValue < $1.xValue })?.xValue ?? 0.0
-        let highestXLimit = axisData.max(by: { $0.xValue < $1.xValue })?.xValue ?? 1.0
-        return lowestXLimit...highestXLimit
-    }
-    
-    func customXAxis() -> some AxisContent {
-        var majorTicks: [Double] = []
-        var majorLabels: [String] = []
-        var majorLabelsFloats: [Double] = []
-        var scientificNotationIndex: Int = 2
-        
-        if selectedObservable == "Cl" {
-            let (ticks, _) = generateXTicksCl()
-            majorTicks = ticks.map { Double($0) } // convert to Double if needed
-            majorLabels = ["10^1", "10^2", "500", "1000", "1500", "2000", "2500"]
-            majorLabelsFloats = [10, 100, 500, 1000, 1500, 2000, 2500]
-        } else if selectedObservable == "Pk" {
-            let (ticks, _) = generateXTicksPk()
-            majorTicks = ticks.map { Double($0) }
-            majorLabels = ticks.map { "10^\(Int($0))" }
-            majorLabelsFloats = ticks.map { pow(10.0, Double($0)) }
-            scientificNotationIndex = ticks.count
-        } else if ["bg", "th"].contains(selectedObservable) {
-            let (ticks, _) = generateXTicksBgAndTh()
-            if plotInLogScale {
-                majorTicks = ticks.map { Double($0) }
-                majorLabels = ticks.map { "10^\(Int($0))" }
-                majorLabelsFloats = ticks.map { pow(10.0, Double($0)) }
-                scientificNotationIndex = ticks.count
-            } else {
-                majorTicks = ticks.map { Double($0) }
-                majorLabels = ticks.map { String($0) }
-                majorLabelsFloats = ticks.map { $0 }
-                scientificNotationIndex = 0
-            }
-        }
-        return AxisMarks(values: majorTicks) { value in
-            AxisTick(centered: true, length: 10, stroke: .init(lineWidth: 2))
-                .foregroundStyle(Color.gray)
-            AxisValueLabel(anchor: .top) {
-                if let index = majorTicks.firstIndex(where: { $0 == value.as(Double.self) }) {
-                    if index < scientificNotationIndex {
-                        let (base, exponent) = separateScientificString(majorLabels[index])
-                        SuperscriptTextView(base: base, exponent: exponent)
-                    } else {
-                        Text("\(majorLabelsFloats[index], format: .number)")
-                            .font(.system(size: 12))
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                }
-            }
-        }
-    }
-    
-    func customXAxisMinorTicks() -> some AxisContent {
-        var minorTicks: [Double] = []
-        var minorLabels: [String] = []
-        if selectedObservable == "Cl" {
-            let (_, ticks) = generateXTicksCl()
-            minorTicks = ticks.map {Double($0)}
-            minorLabels = Array(repeating: "", count: ticks.count)
-        } else if selectedObservable == "Pk" {
-            let (_, ticks) = generateXTicksPk()
-            minorTicks = ticks.map { Double($0) }
-            minorLabels = Array(repeating: "", count: ticks.count)
-        } else if ["bg", "th"].contains(selectedObservable) {
-            let (_, ticks) = generateXTicksBgAndTh()
-            minorTicks = ticks.map {Double($0)}
-            minorLabels = Array(repeating: "", count: ticks.count)
-        }
-        return AxisMarks(values: minorTicks) { value in
-            AxisTick(centered: true, length: 5, stroke: .init(lineWidth: 1))
-                .foregroundStyle(Color.gray)
-            AxisValueLabel(anchor: .top) {
-                if let index = minorTicks.firstIndex(where: { $0 == value.as(Double.self) }) {
-                    Text(minorLabels[index])
-                        .font(.system(size: 12))
-                }
-            }
-        }
-    }
-    
-    func customYAxis() -> some AxisContent {
-        var majorTicks: [Double] = []
-        var scaleTicks: Bool = false
-        let (ticks, _, scale) = generateYTicks()
-        majorTicks = ticks.map { Double($0) }
-        if scale == "linear" {
-            let largestTick = majorTicks.max() ?? 0
-            let smallestTick = majorTicks.min() ?? 0
-            var magnitudeOfLargestTick = log10(largestTick)
-            var magnitudeOfSmallestTick = log10(smallestTick)
-            if abs(magnitudeOfLargestTick).isInfinite {
-                magnitudeOfLargestTick = 0
-            } else if abs(magnitudeOfSmallestTick).isInfinite {
-                magnitudeOfSmallestTick = 0
-            }
-            if magnitudeOfLargestTick > 4 || magnitudeOfLargestTick < -2 || magnitudeOfSmallestTick > 4 || magnitudeOfSmallestTick < -2 {
-                scaleTicks = true
-            }
-        }
-        return AxisMarks(position: .leading, values: majorTicks) { value in
-            AxisTick(centered: true, length: 10, stroke: .init(lineWidth: 2))
-                .foregroundStyle(Color.gray)
-            AxisValueLabel {
-                Group {
-                    if let doubleValue = value.as(Double.self) {
-                        if scale == "log" {
-                            let (base, exponent) = separateScientificString("10^\(Int(doubleValue))")
-                            SuperscriptTextView(base: base, exponent: exponent)
-                        } else if scaleTicks {
-                            let magnitude = floor(log10(doubleValue))
-                            let baseValue = doubleValue / pow(10.0, Double(magnitude))
-                            ScientificTextView(base: String(roundToSignificantDigits(baseValue, digits: 3)), exponent: String(Int(magnitude)))
-                        } else {
-                            Text("\(doubleValue, format: .number)")
-                        }
-                    } else {
-                        EmptyView()
-                    }
-                }
-                .rotationEffect(.degrees(270))
-                .frame(width: 50, height: 10)
-                .offset(x: 18)
-                .font(.system(size: 12))
-            }
-        }
-    }
+        let lower = axisCoordinate(axisLimits[0], axis: 0)
+        let upper = axisCoordinate(axisLimits[1], axis: 0)
 
-    func customYAxisMinorTicks() -> some AxisContent {
-        var minorTicks: [Double] = []
-
-        if selectedObservable == "Cl" {
-            let strideValue: Double
-            switch selectedOption {
-            case "TT":
-                strideValue = 500
-                minorTicks = Array(
-                    stride(from: 0, through: 7000, by: strideValue)
-                )
-            case "TE":
-                strideValue = 20
-                minorTicks = Array(
-                    stride(from: -220.0, through: 230.0, by: strideValue)
-                )
-            case "EE":
-                strideValue = 5
-                minorTicks = Array(
-                    stride(from: 0.0, through: 60.0, by: strideValue)
-                )
-            case "PP":
-                strideValue = 0.1
-                minorTicks = Array(
-                    stride(from: 0.0, through: 2.5, by: strideValue)
-                )
-            default:
-                strideValue = 10
-                minorTicks = Array(
-                    stride(from: -100.0, through: 100.0, by: strideValue)
-                )
-            }
-        } else {
-            let (_, ticks, _) = generateYTicks()
-            minorTicks = ticks.map { Double($0) }
+        guard lower.isFinite, upper.isFinite, lower < upper else {
+            return 0...1
         }
 
-        return AxisMarks(position: .leading, values: minorTicks) { value in
-            AxisTick(centered: true, length: 5, stroke: .init(lineWidth: 1))
-                .foregroundStyle(.gray)
-            AxisValueLabel { EmptyView() }
-        }
+        return lower...upper
     }
 
+    func getYDomain() -> ClosedRange<Double> {
+        let lower = axisCoordinate(axisLimits[2], axis: 1)
+        let upper = axisCoordinate(axisLimits[3], axis: 1)
+
+        guard lower.isFinite, upper.isFinite, lower < upper else {
+            return 0...1
+        }
+
+        return lower...upper
+    }
     
-    func generateYTicks() -> (majorTicks: [Double], minorTicks: [Double], scale: String) {
-        var majorTicks: [Double] = []
-        var minorTicks: [Double] = []
-        var strideValue: Double = 1.0
-        let scale: String
-        let numTicks: Double
-        switch selectedObservable {
-        case "Cl":
-            scale = "linear"
-            numTicks = 5
-        case "Pk":
-            scale = "log"
-            strideValue = 2
-            numTicks = 5
+    private func makeAxisTicks(
+        axis: Int
+    ) -> (major: [AxisTickInfo], minor: [Double]) {
+        guard axisLimits.count == 4, axisScales.count == 2 else {
+            return ([], [])
+        }
+
+        let lower = axisLimits[axis * 2]
+        let upper = axisLimits[axis * 2 + 1]
+
+        guard lower.isFinite, upper.isFinite, lower < upper else {
+            return ([], [])
+        }
+
+        let scale = axisScales[axis]
+        var majorRaw: [RawAxisTick] = []
+        var minorRaw: [Double] = []
+
+        switch scale {
+        case "log":
+            let result = logarithmicTicks(
+                lower: lower,
+                upper: upper,
+                desiredMajorCount: 6
+            )
+
+            majorRaw += result.major
+            minorRaw += result.minor
+
+        case "loglin":
+            // Logarithmic region: lower ... mixSplit.
+            let logEnd = min(upper, mixSplit)
+
+            if lower > 0, logEnd > lower {
+                let result = logarithmicTicks(
+                    lower: lower,
+                    upper: logEnd,
+                    desiredMajorCount: 3
+                )
+
+                majorRaw += result.major
+                minorRaw += result.minor
+            }
+
+            // Linear region: mixSplit ... upper.
+            // Do not filter out the split: the linear generator decides
+            // naturally whether it lies on its major or minor grid.
+            let linearStart = max(lower, mixSplit)
+
+            if linearStart < upper {
+                let result = linearTicks(
+                    lower: linearStart,
+                    upper: upper,
+                    desiredMajorCount: 6
+                )
+
+                majorRaw += result.major
+                minorRaw += result.minor
+            }
+
+        case "linlog":
+            // Linear region: lower ... mixSplit.
+            let linearEnd = min(upper, mixSplit)
+
+            if lower < linearEnd {
+                let result = linearTicks(
+                    lower: lower,
+                    upper: linearEnd,
+                    desiredMajorCount: 6
+                )
+
+                majorRaw += result.major
+                minorRaw += result.minor
+            }
+
+            // Logarithmic region: mixSplit ... upper.
+            // The logarithmic generator decides naturally whether the split
+            // belongs to its major or minor grid.
+            let logStart = max(lower, mixSplit)
+
+            if logStart > 0, logStart < upper {
+                let result = logarithmicTicks(
+                    lower: logStart,
+                    upper: upper,
+                    desiredMajorCount: 4
+                )
+
+                majorRaw += result.major
+                minorRaw += result.minor
+            }
+
         default:
-            numTicks = 4
-            if abs(log10(highestYValue)-log10(lowestYValue)) < 1.0 {
-                scale = "linear"
+            let result = linearTicks(
+                lower: lower,
+                upper: upper,
+                desiredMajorCount: 6
+            )
+
+            majorRaw += result.major
+            minorRaw += result.minor
+        }
+
+        // Merge duplicate major ticks from the two sides of mixSplit.
+        // Keep a label if either major-tick rule provides one.
+        var uniqueMajorRaw: [RawAxisTick] = []
+
+        for tick in majorRaw {
+            if let index = uniqueMajorRaw.firstIndex(where: { existing in
+                let magnitude = max(
+                    max(abs(existing.value), abs(tick.value)),
+                    1e-300
+                )
+                return abs(existing.value - tick.value) <= 1e-10 * magnitude
+            }) {
+                let existing = uniqueMajorRaw[index]
+
+                uniqueMajorRaw[index] = RawAxisTick(
+                    value: existing.value,
+                    label: existing.label ?? tick.label
+                )
             } else {
-                scale = "log"
-                strideValue = ceil(abs(log10(highestYValue)-log10(lowestYValue))/8)
+                uniqueMajorRaw.append(tick)
             }
         }
-        let lowestYLimit = axisData.min(by: { $0.yValue < $1.yValue })?.yValue ?? 1.0
-        let highestYLimit = axisData.max(by: { $0.yValue < $1.yValue })?.yValue ?? 2.0
-        if scale == "log" {
-            let logy = [lowestYLimit, highestYLimit]
-            let logyRounded = [Int(floor(logy.min()!)), Int(ceil(logy.min()!)), Int(floor(logy.max()!)), Int(ceil(logy.max()!))].sorted()
-            var acceptedLogs: [Int] = []
-            for log in logyRounded {
-                if Double(log) < logy.max()! && Double(log) > logy.min()! && !acceptedLogs.contains(log) {
-                    acceptedLogs.append(log)
-                }
+
+        let major = uniqueMajorRaw.compactMap { tick -> AxisTickInfo? in
+            let position = axisCoordinate(tick.value, axis: axis)
+
+            guard position.isFinite else {
+                return nil
             }
-            let minLog = acceptedLogs.min() ?? Int(ceil(lowestYLimit))
-            let maxLog = acceptedLogs.max() ?? Int(floor(highestYLimit))
-            
-            // Generate minor ticks
-            for exp in stride(from: minLog-Int(strideValue), through: maxLog+Int(strideValue), by: Int(strideValue)) {
-                if exp >= minLog && exp <= maxLog {
-                    majorTicks.append(Double(exp))
+
+            return AxisTickInfo(
+                position: position,
+                label: tick.label
+            )
+        }
+        .sorted { $0.position < $1.position }
+
+        // Transform minor ticks, remove duplicates, and let major ticks win
+        // whenever both scale rules produce the same position.
+        var minor: [Double] = []
+
+        for rawValue in minorRaw {
+            let position = axisCoordinate(rawValue, axis: axis)
+
+            guard position.isFinite else {
+                continue
+            }
+
+            let matchesMajor = major.contains { tick in
+                abs(tick.position - position) <
+                    1e-8 * max(1, abs(position))
+            }
+
+            guard !matchesMajor else {
+                continue
+            }
+
+            let alreadyAdded = minor.contains { existing in
+                abs(existing - position) <
+                    1e-8 * max(1, abs(position))
+            }
+
+            if !alreadyAdded {
+                minor.append(position)
+            }
+        }
+
+        return (major, minor.sorted())
+    }
+
+    private func logarithmicTicks(
+        lower: Double,
+        upper: Double,
+        desiredMajorCount: Int
+    ) -> (major: [RawAxisTick], minor: [Double]) {
+        guard lower > 0,
+              upper > lower,
+              lower.isFinite,
+              upper.isFinite else {
+            return ([], [])
+        }
+
+        let firstExponent = Int(
+            max(-300, min(300, ceil(log10(lower))))
+        )
+
+        let lastExponent = Int(
+            max(-300, min(300, floor(log10(upper))))
+        )
+
+        var major: [RawAxisTick] = []
+
+        if firstExponent <= lastExponent {
+            let exponentCount = lastExponent - firstExponent + 1
+
+            // Preserve the previous cadence for LABELLED major ticks.
+            let labelStride = max(
+                1,
+                Int(ceil(
+                    Double(exponentCount) /
+                    Double(max(1, desiredMajorCount))
+                ))
+            )
+
+            // Every power of ten is now a major tick.
+            // Only powers selected by the previous cadence get labels.
+            for exponent in firstExponent...lastExponent {
+                let value = pow(10.0, Double(exponent))
+
+                guard value >= lower, value <= upper else {
+                    continue
                 }
-                let array = Array(2...9).map { log10(Double($0))*Double(strideValue) }
-                for minorExponent in array {
-                    let minorTick = minorExponent + Double(exp)
-                    if minorTick > lowestYLimit && minorTick < highestYLimit {
-                        minorTicks.append(minorTick)
+
+                let shouldLabel =
+                    (exponent - firstExponent) % labelStride == 0
+
+                major.append(
+                    RawAxisTick(
+                        value: value,
+                        label: shouldLabel ? "10^\(exponent)" : nil
+                    )
+                )
+            }
+        }
+
+        // Generate all nine logarithmic subdivisions in every decade.
+        // Do not stride over decades: that was another source of missing ticks.
+        let minorStart = Int(
+            max(-300, min(300, floor(log10(lower))))
+        )
+
+        let minorEnd = Int(
+            max(-300, min(300, ceil(log10(upper))))
+        )
+
+        var minor: [Double] = []
+
+        if minorStart <= minorEnd {
+            for exponent in minorStart...minorEnd {
+                let decade = pow(10.0, Double(exponent))
+
+                for multiplier in 2...9 {
+                    let value = Double(multiplier) * decade
+
+                    // Inclusive bounds allow a natural minor tick at mixSplit.
+                    if value >= lower && value <= upper {
+                        minor.append(value)
                     }
                 }
             }
+        }
+
+        // Intentionally no fallback that manufactures major ticks at the
+        // lower and upper bounds. A boundary is a tick only if a tick rule
+        // naturally generates it.
+
+        return (major, minor)
+    }
+
+    private func linearTicks(
+        lower: Double,
+        upper: Double,
+        desiredMajorCount: Int
+    ) -> (major: [RawAxisTick], minor: [Double]) {
+        let range = upper - lower
+
+        guard range.isFinite, range > 0 else {
+            return ([], [])
+        }
+
+        let roughStep = range / Double(max(1, desiredMajorCount))
+
+        guard roughStep.isFinite, roughStep > 0 else {
+            return ([], [])
+        }
+
+        let magnitude = pow(10.0, floor(log10(roughStep)))
+
+        guard magnitude.isFinite, magnitude > 0 else {
+            return ([], [])
+        }
+
+        let fraction = roughStep / magnitude
+        let multiplier: Double
+
+        if fraction <= 1 {
+            multiplier = 1
+        } else if fraction <= 2 {
+            multiplier = 2
+        } else if fraction <= 5 {
+            multiplier = 5
         } else {
-            let xRange = abs(highestYLimit - lowestYLimit)
-            let approximateSpacing = xRange / numTicks
-            let orderOfMagnitude = floor(log10(approximateSpacing))
-            let spacing: Double
-            let spacing5 = ceil(approximateSpacing/pow(10.0,orderOfMagnitude)/5.5)*5*pow(10.0,orderOfMagnitude)
-            let spacing2 = ceil(approximateSpacing/pow(10.0,orderOfMagnitude)/2.5)*2*pow(10.0,orderOfMagnitude)
-            if abs(spacing5 - approximateSpacing) < abs(spacing2 - approximateSpacing) {
-                spacing = spacing5
-            } else {
-                spacing = spacing2
+            multiplier = 10
+        }
+
+        let step = multiplier * magnitude
+        let firstMajor = ceil(lower / step) * step
+
+        var major: [RawAxisTick] = []
+
+        for index in 0..<100 {
+            let value = firstMajor + Double(index) * step
+
+            if value > upper + abs(step) * 1e-9 {
+                break
             }
-            let closestMultipleOfSpacingToFirst = round(lowestYLimit / spacing) * spacing - 2*spacing
-            let closestMultipleOfSpacingToLast = round(highestYLimit / spacing) * spacing + 2*spacing
-            let proposedTicks = stride(from: closestMultipleOfSpacingToFirst, through: closestMultipleOfSpacingToLast, by: spacing).map { snapToGrid($0, step: spacing, significantDigits: 8) }
-            let proposedMinorTicks = stride(from: closestMultipleOfSpacingToFirst, through: closestMultipleOfSpacingToLast, by: spacing/numTicks).map { snapToGrid($0, step: spacing/numTicks, significantDigits: 8) }
-            for tick in proposedMinorTicks {
-                if tick >= lowestYLimit && tick <= highestYLimit {
-                    if proposedTicks.contains(tick) {
-                        majorTicks.append(tick)
-                    } else {
-                        minorTicks.append(tick)
-                    }
+
+            if value >= lower {
+                major.append(
+                    RawAxisTick(
+                        value: value,
+                        label: formatAxisNumber(value)
+                    )
+                )
+            }
+        }
+
+        let minorStep = step / 5
+        let firstMinor = ceil(lower / minorStep) * minorStep
+        var minor: [Double] = []
+
+        for index in 0..<500 {
+            let value = firstMinor + Double(index) * minorStep
+
+            if value > upper + abs(minorStep) * 1e-9 {
+                break
+            }
+
+            if value >= lower {
+                let isMajor = major.contains {
+                    abs($0.value - value) < abs(step) * 1e-8
+                }
+
+                if !isMajor {
+                    minor.append(value)
                 }
             }
         }
-        return (majorTicks, minorTicks, scale)
+
+        return (major, minor)
+    }
+
+    private func formatAxisNumber(_ value: Double) -> String {
+        String(format: "%.4g", value)
+    }
+
+    @ViewBuilder
+    private func formattedAxisLabel(_ label: String) -> some View {
+        if label.hasPrefix("10^"),
+           let exponent = Int(label.dropFirst(3)) {
+            SuperscriptTextView(
+                base: "10",
+                exponent: String(exponent),
+                fontDesign: style.tickLabelFont.design,
+                fontSize: CGFloat(style.tickLabelFontSize)
+            )
+            .foregroundStyle(style.axisColor)
+        } else {
+            Text(label)
+                .font(
+                    style.tickLabelFont.font(
+                        size: CGFloat(style.tickLabelFontSize)
+                    )
+                )
+                .foregroundStyle(style.axisColor)
+        }
     }
     
     func separateScientificString(_ stringValue: String) -> (base: String, exponent: String) {
@@ -706,6 +885,87 @@ struct ScientificChartView: View {
         return (majorTicks, minorTicks)
     }
     
+    func customXAxis() -> some AxisContent {
+        let ticks = makeAxisTicks(axis: 0).major
+
+        return AxisMarks(values: ticks.map(\.position)) { value in
+            AxisTick(
+                centered: true,
+                length: 10,
+                stroke: .init(lineWidth: majorTickLineWidth)
+            )
+            .foregroundStyle(style.axisColor)
+
+            AxisValueLabel(anchor: .top) {
+                if let coordinate = value.as(Double.self),
+                   let tick = ticks.min(by: {
+                       abs($0.position - coordinate) <
+                       abs($1.position - coordinate)
+                   }),
+                   abs(tick.position - coordinate) < 1e-6 {
+                    if let label = tick.label {
+                        formattedAxisLabel(label)
+                    } else {
+                        EmptyView()
+                    }
+                }
+            }
+        }
+    }
+
+    func customXAxisMinorTicks() -> some AxisContent {
+        let ticks = makeAxisTicks(axis: 0).minor
+
+        return AxisMarks(values: ticks) { _ in
+            AxisTick(centered: true, length: 5, stroke: .init(lineWidth: 1))
+                .foregroundStyle(style.axisColor)
+
+            AxisValueLabel { EmptyView() }
+        }
+    }
+
+    func customYAxis() -> some AxisContent {
+        let ticks = makeAxisTicks(axis: 1).major
+
+        return AxisMarks(position: .leading, values: ticks.map(\.position)) { value in
+            AxisTick(
+                centered: true,
+                length: 10,
+                stroke: .init(lineWidth: majorTickLineWidth)
+            )
+            .foregroundStyle(style.axisColor)
+
+            AxisValueLabel {
+                if let coordinate = value.as(Double.self),
+                   let tick = ticks.min(by: {
+                       abs($0.position - coordinate) <
+                       abs($1.position - coordinate)
+                   }),
+                   abs(tick.position - coordinate) < 1e-6 {
+                    if let label = tick.label {
+                        formattedAxisLabel(label)
+                            .rotationEffect(.degrees(270))
+                            .frame(width: 50, height: 10)
+                            .offset(x: 18)
+                    } else {
+                        EmptyView()
+                    }
+                }
+            }
+        }
+    }
+
+    func customYAxisMinorTicks() -> some AxisContent {
+        let ticks = makeAxisTicks(axis: 1).minor
+
+        return AxisMarks(position: .leading, values: ticks) { _ in
+            AxisTick(centered: true, length: 5, stroke: .init(lineWidth: 1))
+                .foregroundStyle(style.axisColor)
+
+            AxisValueLabel { EmptyView() }
+        }
+    }
+    
     func snapToGrid(_ value: Double, step: Double, significantDigits: Int) -> Double {
         guard step != 0 else { return value }
         let snapped = round(value / step) * step
@@ -733,63 +993,6 @@ struct ScientificChartView: View {
     func linScale(_ x: Double) -> Double {
         let linxnew = (x / (2500 - logscale)) - (logscale / (2500 - logscale))
         return ((linxnew * (1 - transition)) + transition)
-    }
-    
-    func scaleGraphPoint(xPoint: Double) -> Double {
-        let p = xPoint
-        if selectedObservable != "Cl" {
-            return p
-        }
-        if p <= logscale {
-            return logScale(p)
-        } else {
-            return linScale(p)
-        }
-    }
-
-    func rescaleXCoordinate(_ x: Double, data: Bool = false) -> Double {
-        switch selectedObservable {
-        case "Cl":
-            return x
-        case "Pk":
-            if data {
-                return log10(x*0.677)
-            } else {
-                return log10(x)
-            }
-        case "bg":
-            if plotInLogScale {
-                return log10(x)
-            } else {
-                return x
-            }
-        default:
-            return x
-        }
-    }
-    
-    func rescaleYCoordinate(_ y: Double, data: Bool = false) -> Double {
-        switch selectedObservable {
-        case "Cl":
-            switch selectedOption {
-            case "PP":
-                return y*1e+7
-            default:
-                if data {
-                    return y
-                } else {
-                    return y*pow(2.7255e+6,2)
-                }
-            }
-        case "Pk":
-            return log10(y)
-        default:
-            if abs(log10(highestYValue)-log10(lowestYValue)) < 1.0 {
-                return y
-            } else {
-                return log10(y)
-            }
-        }
     }
 
     func mathify(_ input: String) -> AttributedString {
@@ -890,6 +1093,205 @@ struct ScientificChartView: View {
 
         return output
     }
+    
+    private func axisCoordinate(_ value: Double, axis: Int) -> Double {
+        guard axisLimits.count == 4,
+              axisScales.count == 2,
+              value.isFinite else {
+            return .nan
+        }
+
+        let lower = axisLimits[axis * 2]
+        let upper = axisLimits[axis * 2 + 1]
+
+        guard lower.isFinite, upper.isFinite, lower < upper else {
+            return .nan
+        }
+
+        switch axisScales[axis] {
+        case "log":
+            guard value > 0 else { return .nan }
+            return log10(value)
+
+        case "loglin":
+            // Logarithmic below mixSplit; linear above it.
+            guard lower > 0,
+                  lower < mixSplit,
+                  mixSplit < upper,
+                  value > 0 else {
+                return .nan
+            }
+
+            if value <= mixSplit {
+                return transition
+                    * log10(value / lower)
+                    / log10(mixSplit / lower)
+            }
+
+            return transition
+                + (1 - transition)
+                * (value - mixSplit)
+                / (upper - mixSplit)
+
+        case "linlog":
+            // Linear below mixSplit; logarithmic above it.
+            guard lower < mixSplit,
+                  mixSplit > 0,
+                  mixSplit < upper else {
+                return .nan
+            }
+
+            if value <= mixSplit {
+                return (1 - transition)
+                    * (value - lower)
+                    / (mixSplit - lower)
+            }
+
+            return (1 - transition)
+                + transition
+                * log10(value / mixSplit)
+                / log10(upper / mixSplit)
+
+        default:
+            return value
+        }
+    }
+    
+    private func plottedX(_ x: Double, observed: Bool = false) -> Double {
+        let adjustedX: Double
+
+        if selectedObservable == "Pk" && observed {
+            // Preserve the existing conversion for observational data.
+            adjustedX = x * 0.677
+        } else {
+            adjustedX = x
+        }
+
+        return axisCoordinate(adjustedX, axis: 0)
+    }
+
+    private func plottedY(_ y: Double, observed: Bool = false) -> Double {
+        var adjustedY = y
+
+        if selectedObservable == "Cl" {
+            if selectedOption == "PP" {
+                adjustedY *= 1e7
+            } else if !observed {
+                adjustedY *= pow(2.7255e6, 2)
+            }
+        }
+
+        return axisCoordinate(adjustedY, axis: 1)
+    }
+    
+    private func isValidPoint(
+        _ point: GraphData,
+        observed: Bool = false
+    ) -> Bool {
+        guard plottedX(point.xValue, observed: observed).isFinite,
+              plottedY(point.yValue, observed: observed).isFinite else {
+            return false
+        }
+
+        if observed {
+            let lowerY = point.yValue - point.errNegative
+            let upperY = point.yValue + point.errPositive
+
+            guard plottedY(lowerY, observed: true).isFinite,
+                  plottedY(upperY, observed: true).isFinite else {
+                return false
+            }
+        }
+
+        return true
+    }
+    
+    private func renderCurvePoints(
+        _ points: [GraphData],
+        extrapolationFraction: Double = 0.02
+    ) -> [RenderedCurvePoint] {
+
+        // Transform once into the coordinate system used by the chart.
+        var result = points.compactMap { point -> RenderedCurvePoint? in
+            let x = plottedX(point.xValue)
+            let y = plottedY(point.yValue)
+
+            guard x.isFinite, y.isFinite else {
+                return nil
+            }
+
+            return RenderedCurvePoint(
+                id: point.id.uuidString,
+                x: x,
+                y: y
+            )
+        }
+        .sorted { $0.x < $1.x }
+
+        guard result.count >= 2 else {
+            return result
+        }
+
+        let domain = getXDomain()
+        let span = domain.upperBound - domain.lowerBound
+
+        guard span.isFinite, span > 0,
+              extrapolationFraction > 0 else {
+            return result
+        }
+
+        let extensionDistance = span * extrapolationFraction
+        let leftTarget = domain.lowerBound - extensionDistance
+        let rightTarget = domain.upperBound + extensionDistance
+
+        // Extend the curve on the left if it currently ends inside the domain.
+        if result[0].x > domain.lowerBound {
+            let first = result[0]
+            let second = result[1]
+            let dx = second.x - first.x
+
+            if dx.isFinite, abs(dx) > 1e-12 {
+                let slope = (second.y - first.y) / dx
+                let extrapolatedY = first.y + slope * (leftTarget - first.x)
+
+                if extrapolatedY.isFinite {
+                    result.insert(
+                        RenderedCurvePoint(
+                            id: "__extrapolated_left",
+                            x: leftTarget,
+                            y: extrapolatedY
+                        ),
+                        at: 0
+                    )
+                }
+            }
+        }
+
+        // Extend the curve on the right if it currently ends inside the domain.
+        if let last = result.last,
+           last.x < domain.upperBound {
+
+            let previous = result[result.count - 2]
+            let dx = last.x - previous.x
+
+            if dx.isFinite, abs(dx) > 1e-12 {
+                let slope = (last.y - previous.y) / dx
+                let extrapolatedY = last.y + slope * (rightTarget - last.x)
+
+                if extrapolatedY.isFinite {
+                    result.append(
+                        RenderedCurvePoint(
+                            id: "__extrapolated_right",
+                            x: rightTarget,
+                            y: extrapolatedY
+                        )
+                    )
+                }
+            }
+        }
+
+        return result
+    }
 }
 
 
@@ -907,7 +1309,34 @@ extension ScientificChartView {
 
         context.beginPDFPage(nil)
 
-        let renderer = ImageRenderer(content: chart)
+        let exportStyle = chart.style
+
+        let insets = exportStyle.resolvedExportInsets(
+            pageWidth: width,
+            pageHeight: height
+        )
+
+        let exportLayout = ZStack(alignment: .topLeading) {
+            // Fill the complete PDF page, including all margins.
+            exportStyle.exportBackgroundColor
+
+            // Place the chart inside the four margins.
+            chart
+                .padding(insets)
+        }
+        .frame(
+            width: width,
+            height: height,
+            alignment: .topLeading
+        )
+        .clipped()
+
+        let renderer = ImageRenderer(content: exportLayout)
+        renderer.proposedSize = ProposedViewSize(
+            width: width,
+            height: height
+        )
+
         renderer.render { _, draw in
             draw(context)
         }
