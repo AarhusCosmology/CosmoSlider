@@ -356,6 +356,7 @@ struct HelpView: View {
 struct ChartStyleSheet: View {
     @Binding var isOpened: Bool
     @Binding var style: ChartStyle
+    @Binding var selectedObservable: String
 
     var body: some View {
         NavigationView {
@@ -412,31 +413,157 @@ struct ChartStyleSheet: View {
                         .frame(width: 45, alignment: .trailing)
                     }
                 }
+                
+                // MARK: - Legend
+                Section(header: Text("Legend")) {
+                    Toggle("Show Legend", isOn: $style.showLegend)
+
+                    Picker(
+                        "Position",
+                        selection: Binding<LegendPosition>(
+                            get: {
+                                if style.legendPositionWasCustomized {
+                                    return style.legendPosition
+                                }
+
+                                return selectedObservable == "Pk"
+                                    ? .bottomLeft
+                                    : .topRight
+                            },
+                            set: { newPosition in
+                                style.legendPosition = newPosition
+                                style.legendPositionWasCustomized = true
+                            }
+                        )
+                    ) {
+                        ForEach(LegendPosition.allCases) { position in
+                            Text(position.rawValue).tag(position)
+                        }
+                    }
+
+                    Picker("Font Family", selection: $style.legendFont) {
+                        ForEach(AxisTickFont.allCases) { font in
+                            Text(font.rawValue).tag(font)
+                        }
+                    }
+
+                    HStack {
+                        Text("Font Size")
+                        Slider(
+                            value: $style.legendFontSize,
+                            in: 8...24,
+                            step: 1
+                        )
+                        Text("\(Int(style.legendFontSize)) pt")
+                            .monospacedDigit()
+                            .frame(width: 45, alignment: .trailing)
+                    }
+
+                    ColorPicker(
+                        "Font Color",
+                        selection: $style.legendFontColor
+                    )
+
+                    ColorPicker(
+                        "Background Color",
+                        selection: $style.legendBackgroundColor,
+                        supportsOpacity: false
+                    )
+
+                    HStack {
+                        Text("Background Alpha")
+                        Slider(
+                            value: $style.legendBackgroundOpacity,
+                            in: 0...1,
+                            step: 0.05
+                        )
+                        Text(
+                            style.legendBackgroundOpacity,
+                            format: .number.precision(.fractionLength(2))
+                        )
+                        .monospacedDigit()
+                        .frame(width: 42, alignment: .trailing)
+                    }
+                }
 
                 
-                // MARK: - Error bars
-                Section(header: Text("Error Bars")) {
-                    ColorPicker("Color", selection: $style.errorBarColor)
-                    
+                // MARK: - Observation styling
+
+                Section(
+                    header: Text(
+                        selectedObservable == "Pk"
+                            ? "Pk Dataset Colours"
+                            : "Observation Styling"
+                    )
+                ) {
+
+                    // MARK: Observation colours
+
+                    if selectedObservable == "Pk" {
+
+                        // Dataset 1 uses the shared observation colour.
+                        ColorPicker(
+                            "Dataset 1",
+                            selection: $style.observationColor,
+                            supportsOpacity: false
+                        )
+
+                        // Datasets 2–6 have their own colours.
+                        ForEach(
+                            style.pkAdditionalColors.indices,
+                            id: \.self
+                        ) { index in
+                            ColorPicker(
+                                "Dataset \(index + 2)",
+                                selection: $style.pkAdditionalColors[index],
+                                supportsOpacity: false
+                            )
+                        }
+
+                    } else {
+
+                        // All non-Pk observables use the shared colour.
+                        ColorPicker(
+                            "Observation Colour",
+                            selection: $style.observationColor,
+                            supportsOpacity: false
+                        )
+                    }
+
+                    // MARK: Shared opacity
+
                     HStack {
                         Text("Opacity")
-                        Slider(value: $style.errorBarOpacity, in: 0...1)
-                        Text(style.errorBarOpacity, format: .number.precision(.fractionLength(2)))
-                            .frame(width: 40)
+
+                        Slider(
+                            value: $style.observationOpacity,
+                            in: 0...1
+                        )
+
+                        Text(
+                            style.observationOpacity,
+                            format: .number.precision(.fractionLength(2))
+                        )
+                        .monospacedDigit()
+                        .frame(width: 40)
                     }
-                    
+
+                    // MARK: Shared marker size
+
                     HStack {
                         Text("Marker Size")
-                        Slider(value: $style.errorBarMarkerSize, in: 1.0...5.0)
-                        Text(style.errorBarMarkerSize, format: .number.precision(.fractionLength(1)))
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Cap Size")
-                        Slider(value: $style.errorBarCapSize, in: 0.5...4.0)
-                        Text(style.errorBarCapSize, format: .number.precision(.fractionLength(1)))
-                            .frame(width: 40)
+
+                        Slider(
+                            value: $style.observationMarkerSize,
+                            in: 1.0...5.0
+                        )
+
+                        Text(
+                            style.observationMarkerSize,
+                            format: .number.precision(.fractionLength(1))
+                        )
+                        .monospacedDigit()
+                        .frame(width: 40)
                     }
                 }
                 
@@ -572,33 +699,8 @@ struct AxisLimitsSheet: View {
         NavigationView {
             Form {
                 Section("X Axis") {
-                    HStack {
-                        Text("Minimum")
-                            .frame(width: 80, alignment: .leading)
-
-                        TextField(
-                            "Value",
-                            value: $draftAxisLimits[0],
-                            format: .number
-                        )
-                        .keyboardType(.numbersAndPunctuation)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                    }
-
-                    HStack {
-                        Text("Maximum")
-                            .frame(width: 80, alignment: .leading)
-
-                        TextField(
-                            "Value",
-                            value: $draftAxisLimits[1],
-                            format: .number
-                        )
-                        .keyboardType(.numbersAndPunctuation)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                    }
+                    axisLimitRow("Minimum", index: 0)
+                    axisLimitRow("Maximum", index: 1)
 
                     Picker("Scale", selection: $draftAxisScales[0]) {
                         ForEach(scaleOptions, id: \.0) { option in
@@ -608,33 +710,8 @@ struct AxisLimitsSheet: View {
                 }
                 
                 Section("Y Axis") {
-                    HStack {
-                        Text("Minimum")
-                            .frame(width: 80, alignment: .leading)
-
-                        TextField(
-                            "Value",
-                            value: $draftAxisLimits[2],
-                            format: .number
-                        )
-                        .keyboardType(.numbersAndPunctuation)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                    }
-
-                    HStack {
-                        Text("Maximum")
-                            .frame(width: 80, alignment: .leading)
-
-                        TextField(
-                            "Value",
-                            value: $draftAxisLimits[3],
-                            format: .number
-                        )
-                        .keyboardType(.numbersAndPunctuation)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                    }
+                    axisLimitRow("Minimum", index: 2)
+                    axisLimitRow("Maximum", index: 3)
 
                     Picker("Scale", selection: $draftAxisScales[1]) {
                         ForEach(scaleOptions, id: \.0) { option in
@@ -647,7 +724,7 @@ struct AxisLimitsSheet: View {
                    draftAxisScales.contains("linlog") {
                     Section("Mixed-Scale Split") {
                         TextField(
-                            "Split value",
+                            "Split value (physical units)",
                             value: $draftMixSplit,
                             format: .number
                         )
@@ -667,6 +744,11 @@ struct AxisLimitsSheet: View {
                             .foregroundStyle(.red)
                     }
                 }
+            }
+            .onAppear {
+                draftAxisLimits = axisLimits
+                draftAxisScales = axisScales
+                draftMixSplit = mixSplit
             }
             .navigationTitle("Axis Limits")
             .navigationBarTitleDisplayMode(.inline)
@@ -689,6 +771,124 @@ struct AxisLimitsSheet: View {
                     .disabled(validationError != nil)
                 }
             }
+        }
+    }
+    
+    // Determines whether a particular endpoint should be entered
+    // in log10 units.
+    //
+    // Indices:
+    // 0 = X minimum
+    // 1 = X maximum
+    // 2 = Y minimum
+    // 3 = Y maximum
+
+    private func usesLogUnits(for index: Int) -> Bool {
+        let axisIndex = index / 2
+        let isMinimum = index % 2 == 0
+
+        guard draftAxisScales.indices.contains(axisIndex) else {
+            return false
+        }
+
+        let scale = draftAxisScales[axisIndex]
+
+        switch scale {
+        case "log":
+            // Both endpoints use log10 units.
+            return true
+
+        case "loglin":
+            // Only the minimum endpoint is logarithmic.
+            return isMinimum
+
+        case "linlog":
+            // Only the maximum endpoint is logarithmic.
+            return !isMinimum
+
+        default:
+            return false
+        }
+    }
+
+
+    // Converts between the displayed value and the actual physical value.
+    // The underlying draftAxisLimits array always stores physical values.
+
+    private func axisLimitBinding(at index: Int) -> Binding<Double> {
+        Binding(
+            get: {
+                let physicalValue = draftAxisLimits[index]
+
+                guard usesLogUnits(for: index) else {
+                    return physicalValue
+                }
+
+                guard physicalValue > 0 else {
+                    return .nan
+                }
+
+                return log10(physicalValue)
+            },
+            set: { displayedValue in
+                guard displayedValue.isFinite else {
+                    return
+                }
+
+                if usesLogUnits(for: index) {
+                    let physicalValue = pow(10.0, displayedValue)
+
+                    guard physicalValue.isFinite,
+                          physicalValue > 0 else {
+                        return
+                    }
+
+                    draftAxisLimits[index] = physicalValue
+
+                } else {
+                    draftAxisLimits[index] = displayedValue
+                }
+            }
+        )
+    }
+
+
+    // Creates an axis-limit input row with a clear indication
+    // of whether the value is entered in logarithmic or physical units.
+
+    private func axisLimitRow(
+        _ title: String,
+        index: Int
+    ) -> some View {
+
+        HStack(spacing: 12) {
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+
+                if usesLogUnits(for: index) {
+                    Text("log₁₀ units")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                } else if draftAxisScales[index / 2] == "loglin" ||
+                            draftAxisScales[index / 2] == "linlog" {
+
+                    Text("Physical units")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 105, alignment: .leading)
+
+            TextField(
+                "Value",
+                value: axisLimitBinding(at: index),
+                format: .number.precision(.fractionLength(0...6))
+            )
+            .keyboardType(.numbersAndPunctuation)
+            .multilineTextAlignment(.trailing)
+            .textFieldStyle(.plain)
         }
     }
 
@@ -748,6 +948,8 @@ struct AddGraphSheet: View {
     @Binding var graphOrder: [String]
     @Binding var optionsDictionary: [String: [String]]
     @Binding var parameters: [Double]
+    @Binding var parameterNames: [String]
+    @Binding var selectedRedshift: Double
     @Binding var xArrayDictionary: [String: [Double]]
     @Binding var interpreter: Interpreter?
     @Binding var outputIndices: [String: (Int, Int)]
@@ -855,7 +1057,9 @@ struct AddGraphSheet: View {
                         parameters: parameters,
                         xArrayDictionary: xArrayDictionary,
                         outputIndices: outputIndices,
-                        interpreter: interpreter!
+                        interpreter: interpreter,
+                        parameterNames: parameterNames,
+                        redshift: selectedRedshift
                     )
             }
         }

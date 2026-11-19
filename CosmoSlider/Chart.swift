@@ -10,6 +10,25 @@ import Charts
 import UniformTypeIdentifiers
 import Foundation
 
+private extension Color {
+    init(pkHex hex: String) {
+        let cleaned = hex.trimmingCharacters(
+            in: CharacterSet.alphanumerics.inverted
+        )
+
+        var value: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&value)
+
+        self.init(
+            .sRGB,
+            red: Double((value >> 16) & 0xFF) / 255,
+            green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255,
+            opacity: 1
+        )
+    }
+}
+
 private struct RawAxisTick {
     let value: Double
     let label: String?
@@ -31,7 +50,7 @@ struct ScientificChartView: View {
     @Binding var data: [GraphData]
     @Binding var showObservedData: Bool
     @Binding var observedData: [GraphData]
-    //@Binding var axisData: [GraphData]
+    @Binding var pkDatasets: [PkObservationDataset]
     
     @Binding var selectedObservable: String
     @Binding var selectedOption: String
@@ -50,12 +69,25 @@ struct ScientificChartView: View {
     @Binding var axisScales: [String]
     @Binding var mixSplit: Double
     
+    @Binding var hiddenGraphKeys: Set<String>
+    @Binding var hiddenPkDatasetKeys: Set<String>
+    @Binding var hiddenCmbObservation: Bool
+    
     let logscale: Double
     let transition: Double
     let l_min: Double
     let width: CGFloat
     let height: CGFloat
     let isExporting: Bool
+    
+    private let pkObservationColorHexes: [String] = [
+        "#32CD32", // Lime green
+        "#FAC811", // Orange
+        "#FC656C", // Red
+        "#05F1FA", // Cyan
+        "#F520EE", // Magenta
+        "#9B71C7"  // Purple
+    ]
     
     //private let axisStrokeColor = Color.gray
     private let majorTickLineWidth: CGFloat = 2
@@ -64,6 +96,55 @@ struct ScientificChartView: View {
         graphOrder.filter { key in
             dataDictionary[key]?[selectedObservable]?[selectedOption] != nil
         }
+    }
+    
+    private func pkDatasetKey(
+        _ dataset: PkObservationDataset
+    ) -> String {
+        String(describing: dataset.id)
+    }
+
+    private var visiblePkDatasets: [PkObservationDataset] {
+        pkDatasets.filter {
+            !hiddenPkDatasetKeys.contains(pkDatasetKey($0))
+        }
+    }
+
+    private var legendPkDatasets: [PkObservationDataset] {
+        guard showObservedData else {
+            return []
+        }
+
+        return isExporting ? visiblePkDatasets : pkDatasets
+    }
+
+    private var hasLegendContent: Bool {
+        !legendGraphKeys.isEmpty ||
+        !legendPkDatasets.isEmpty ||
+        (
+            showObservedData &&
+            selectedObservable == "Cl" &&
+            !observedData.isEmpty &&
+            (!isExporting || !hiddenCmbObservation)
+        )
+    }
+    
+    private var visibleGraphKeys: [String] {
+        validGraphKeys.filter { !hiddenGraphKeys.contains($0) }
+    }
+    
+    private var legendGraphKeys: [String] {
+        isExporting ? visibleGraphKeys : validGraphKeys
+    }
+    
+    private var resolvedLegendPosition: LegendPosition {
+        if style.legendPositionWasCustomized {
+            return style.legendPosition
+        }
+
+        return selectedObservable == "Pk"
+            ? .bottomLeft
+            : .topRight
     }
     
     let observableDictionary: [String: String] = [
@@ -86,77 +167,263 @@ struct ScientificChartView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             if isExporting {
                 chartContent
             } else {
                 chartContent.drawingGroup()
             }
-            if !graphOrder.isEmpty {
-                LegendView
+        }
+    }
+    
+    
+    @ChartContentBuilder
+    private var savedCurveMarks: some ChartContent {
+        ForEach(visibleGraphKeys, id: \.self) { key in
+            if let points = dataDictionary[key]![selectedObservable]![selectedOption] {
+                ForEach(renderCurvePoints(points)) { point in
+                    LineMark(
+                        x: .value("X Value", point.x),
+                        y: .value("Y Value", point.y),
+                        series: .value("Legend", key)
+                    )
+                    .interpolationMethod(.cardinal)
+                    .lineStyle(
+                        StrokeStyle(
+                            lineWidth: styleDictionary[key]?.lineWidth ?? 1,
+                            dash: styleDictionary[key]?.linePattern.dashPattern ?? []
+                        )
+                    )
+                    .foregroundStyle(
+                        styleDictionary[key]?.lineColor.opacity(
+                            styleDictionary[key]?.lineOpacity ?? 1
+                        ) ?? .blue
+                    )
+                }
             }
         }
     }
+
+    @ChartContentBuilder
+    private var currentCurveMarks: some ChartContent {
+        ForEach(renderCurvePoints(data)) { point in
+            LineMark(
+                x: .value("X Value", point.x),
+                y: .value("Y Value", point.y)
+            )
+            .interpolationMethod(.cardinal)
+            .lineStyle(
+                StrokeStyle(
+                    lineWidth: style.lineWidth,
+                    dash: style.linePattern.dashPattern
+                )
+            )
+            .foregroundStyle(style.lineColor.opacity(style.lineOpacity))
+        }
+    }
+
+    private func pkColor(for dataset: PkObservationDataset) -> Color {
+
+        guard let datasetIndex = pkDatasets.firstIndex(where: {
+            $0.id == dataset.id
+        }) else {
+            return style.observationColor
+        }
+
+        // The first Pk dataset uses the shared observation colour.
+        if datasetIndex == 0 {
+            return style.observationColor
+        }
+
+        // Remaining datasets use the additional colour array.
+        guard !style.pkAdditionalColors.isEmpty else {
+            return style.observationColor
+        }
+
+        let colorIndex = (datasetIndex - 1) %
+            style.pkAdditionalColors.count
+
+        return style.pkAdditionalColors[colorIndex]
+    }
+
+    @ChartContentBuilder
+    private var observedMarks: some ChartContent {
+        if showObservedData {
+            if selectedObservable == "Pk" {
+                ForEach(visiblePkDatasets) { dataset in
+                    ForEach(dataset.points) { point in
+                        pkObservedMarks(
+                            for: point,
+                            color: pkColor(for: dataset)
+                        )
+                    }
+                }
+            } else if selectedObservable == "Cl",
+                      !hiddenCmbObservation {
+                ForEach(
+                    observedData.filter {
+                        isValidPoint($0, observed: true)
+                    }
+                ) { point in
+                    cmbObservedMarks(for: point)
+                }
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private func pkObservedMarks(
+        for point: PkObservationPoint,
+        color: Color
+    ) -> some ChartContent {
+
+        if point.k.isFinite,
+           point.pk.isFinite,
+           point.k > 0,
+           point.pk > 0 {
+
+            // Group all marks belonging to this observation.
+            Plot {
+
+                // Vertical Pk uncertainty bar.
+                if let low = point.pkLow,
+                   let high = point.pkHigh,
+                   low.isFinite,
+                   high.isFinite,
+                   low > 0,
+                   high >= low {
+
+                    RuleMark(
+                        x: .value(
+                            "k",
+                            plottedX(point.k, observed: true)
+                        ),
+                        yStart: .value(
+                            "Pk",
+                            plottedY(low, observed: true)
+                        ),
+                        yEnd: .value(
+                            "Pk",
+                            plottedY(high, observed: true)
+                        )
+                    )
+                    .lineStyle(
+                        StrokeStyle(lineWidth: 1.5)
+                    )
+                }
+
+                // Horizontal k uncertainty bar.
+                if let low = point.kLow,
+                   let high = point.kHigh,
+                   low.isFinite,
+                   high.isFinite,
+                   low > 0,
+                   high >= low {
+
+                    RuleMark(
+                        xStart: .value(
+                            "k",
+                            plottedX(low, observed: true)
+                        ),
+                        xEnd: .value(
+                            "k",
+                            plottedX(high, observed: true)
+                        ),
+                        y: .value(
+                            "Pk",
+                            plottedY(point.pk, observed: true)
+                        )
+                    )
+                    .lineStyle(
+                        StrokeStyle(lineWidth: 1.5)
+                    )
+                }
+
+                // Central observation marker.
+                PointMark(
+                    x: .value(
+                        "k",
+                        plottedX(point.k, observed: true)
+                    ),
+                    y: .value(
+                        "Pk",
+                        plottedY(point.pk, observed: true)
+                    )
+                )
+                .symbolSize(
+                    style.observationMarkerSize * 10
+                )
+            }
+            // Apply the dataset colour to the complete group.
+            .foregroundStyle(color)
+
+            // Composite the marks first, then apply opacity once.
+            .compositingLayer { content in
+                content.opacity(style.observationOpacity)
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private func cmbObservedMarks(
+        for point: GraphData
+    ) -> some ChartContent {
+
+        Plot {
+
+            // Vertical CMB uncertainty bar.
+            RuleMark(
+                x: .value(
+                    "x",
+                    plottedX(point.xValue, observed: true)
+                ),
+                yStart: .value(
+                    "y",
+                    plottedY(
+                        point.yValue - point.errNegative,
+                        observed: true
+                    )
+                ),
+                yEnd: .value(
+                    "y",
+                    plottedY(
+                        point.yValue + point.errPositive,
+                        observed: true
+                    )
+                )
+            )
+            .lineStyle(
+                StrokeStyle(lineWidth: 1.5)
+            )
+
+            // Central CMB observation marker.
+            PointMark(
+                x: .value(
+                    "x",
+                    plottedX(point.xValue, observed: true)
+                ),
+                y: .value(
+                    "y",
+                    plottedY(point.yValue, observed: true)
+                )
+            )
+            .symbolSize(
+                style.observationMarkerSize * 10
+            )
+        }
+        .foregroundStyle(style.observationColor)
+        .compositingLayer { content in
+            content.opacity(style.observationOpacity)
+        }
+    }
+
     
     @ViewBuilder
     private var chartContent: some View {
         Chart {
-            //let plotAreaShape = isExporting
-            //? PlotAreaShape(exportWidth: width, exportHeight: height - (1-0.836)*896.0*0.4)
-            //: PlotAreaShape()
-            ForEach(validGraphKeys, id: \.self) { key in
-                if let points = dataDictionary[key]![selectedObservable]![selectedOption] {
-                    ForEach(renderCurvePoints(points)) { point in
-                        LineMark(
-                            x: .value("X Value", point.x),
-                            y: .value("Y Value", point.y),
-                            series: .value("Legend", key)
-                        )
-                        .interpolationMethod(.cardinal)
-                        .lineStyle(
-                            StrokeStyle(
-                                lineWidth: styleDictionary[key]?.lineWidth ?? 1,
-                                dash: styleDictionary[key]?.linePattern.dashPattern ?? []
-                            )
-                        )
-                        .foregroundStyle(
-                            styleDictionary[key]?.lineColor.opacity(styleDictionary[key]?.lineOpacity ?? 1) ?? .blue
-                        )
-                        //.clipShape(plotAreaShape)
-                    }
-                }
-            }
-            ForEach(renderCurvePoints(data)) { point in
-                LineMark(
-                    x: .value("X Value", point.x),
-                    y: .value("Y Value", point.y)
-                )
-                .lineStyle(
-                    StrokeStyle(
-                        lineWidth: style.lineWidth,
-                        dash: style.linePattern.dashPattern
-                    )
-                )
-                .foregroundStyle(style.lineColor.opacity(style.lineOpacity))
-                //.clipShape(plotAreaShape)
-            }
-            .interpolationMethod(.cardinal)
-            if showObservedData {
-                ForEach(observedData.filter { isValidPoint($0) }) { point in
-                    ErrorBarMark(
-                        x: .value("x", plottedX(point.xValue, observed: true)),
-                        y: .value("y", plottedY(point.yValue, observed: true)),
-                        low: .value("y", plottedY(point.yValue-point.errNegative, observed: true)),
-                        high: .value("y", plottedY(point.yValue+point.errPositive, observed: true)),
-                        markerSize: style.errorBarMarkerSize,
-                        capSize: style.errorBarCapSize
-                    )
-                    .foregroundStyle(
-                        style.errorBarColor.opacity(style.errorBarOpacity)
-                    )
-                    //.clipShape(plotAreaShape)
-                }
-            }
+            savedCurveMarks
+            currentCurveMarks
+            observedMarks
         }
         .chartXScale(domain: getXDomain())
         .chartYScale(domain: getYDomain())
@@ -202,6 +469,7 @@ struct ScientificChartView: View {
                 if let plotFrameAnchor = proxy.plotFrame {
                     let plotFrame = geometry[plotFrameAnchor]
 
+                    // Axis border.
                     Rectangle()
                         .stroke(
                             style.axisColor,
@@ -216,6 +484,26 @@ struct ScientificChartView: View {
                             y: plotFrame.midY
                         )
                         .allowsHitTesting(false)
+
+                    // Legend anchored to the axis-border frame.
+                    if style.showLegend && hasLegendContent {
+
+                        Color.clear
+                            .frame(
+                                width: plotFrame.width,
+                                height: plotFrame.height
+                            )
+                            .overlay(alignment: resolvedLegendPosition.alignment) {
+                                LegendView
+                                    .padding(8)
+                            }
+                            .clipShape(Rectangle())
+                            .position(
+                                x: plotFrame.midX,
+                                y: plotFrame.midY
+                            )
+                            .allowsHitTesting(!isExporting)
+                    }
                 }
             }
         }
@@ -226,39 +514,230 @@ struct ScientificChartView: View {
         .padding(.top, isExporting ? 0 : 75)
     }
     
+    private var cmbObservationLegendLabel: String {
+        if selectedObservable != "Cl" {
+            return "Observed Data"
+        }
+
+        if selectedOption == "PP" {
+            return "SPT-SZ + Planck lensing map"
+        }
+
+        return "Planck 2018 \(selectedOption)"
+    }
+    
+    @ViewBuilder
+    private func graphLegendRow(for key: String) -> some View {
+        let isHidden = hiddenGraphKeys.contains(key)
+
+        if isExporting {
+            graphLegendContent(for: key, isHidden: false)
+        } else {
+            Button {
+                if isHidden {
+                    hiddenGraphKeys.remove(key)
+                } else {
+                    hiddenGraphKeys.insert(key)
+                }
+            } label: {
+                graphLegendContent(for: key, isHidden: isHidden)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(key)
+            .accessibilityValue(isHidden ? "Disabled" : "Enabled")
+        }
+    }
+
+
+    private func graphLegendContent(
+        for key: String,
+        isHidden: Bool
+    ) -> some View {
+
+        let graphStyle = styleDictionary[key]
+        let lineWidth = graphStyle?.lineWidth ?? 1
+        let dashPattern = graphStyle?.linePattern.dashPattern ?? []
+
+        let configuredColor =
+            graphStyle?.lineColor.opacity(
+                graphStyle?.lineOpacity ?? 1.0
+            ) ?? .blue
+
+        let sampleColor: Color = isHidden
+            ? .gray.opacity(0.55)
+            : configuredColor
+
+        return HStack(spacing: 6) {
+
+            // Draw a sample using the actual line width and dash pattern.
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: 8))
+                path.addLine(to: CGPoint(x: 28, y: 8))
+            }
+            .stroke(
+                sampleColor,
+                style: StrokeStyle(
+                    lineWidth: lineWidth,
+                    dash: dashPattern
+                )
+            )
+            .frame(width: 28, height: 16)
+
+            Text(key)
+                .lineLimit(1)
+                .foregroundStyle(
+                    isHidden ? Color.secondary : style.legendFontColor
+                )
+                .strikethrough(isHidden, color: .secondary)
+        }
+        .contentShape(Rectangle())
+    }
+    
+    @ViewBuilder
+    private func pkDatasetLegendRow(
+        for dataset: PkObservationDataset
+    ) -> some View {
+
+        let key = pkDatasetKey(dataset)
+        let isHidden =
+            !showObservedData ||
+            hiddenPkDatasetKeys.contains(key)
+
+        if isExporting {
+            pkDatasetLegendContent(
+                for: dataset,
+                isHidden: false
+            )
+        } else {
+            Button {
+                if !showObservedData {
+                    // Re-enable the master Show Data toggle.
+                    showObservedData = true
+                    hiddenPkDatasetKeys.remove(key)
+
+                } else if hiddenPkDatasetKeys.contains(key) {
+                    hiddenPkDatasetKeys.remove(key)
+
+                } else {
+                    hiddenPkDatasetKeys.insert(key)
+                }
+            } label: {
+                pkDatasetLegendContent(
+                    for: dataset,
+                    isHidden: isHidden
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+
+    private func pkDatasetLegendContent(
+        for dataset: PkObservationDataset,
+        isHidden: Bool
+    ) -> some View {
+
+        let configuredColor = pkColor(for: dataset)
+
+        return HStack(spacing: 6) {
+
+            Circle()
+                .fill(
+                    isHidden
+                        ? Color.gray.opacity(0.55)
+                        : configuredColor.opacity(style.observationOpacity)
+                )
+                .frame(width: 8, height: 8)
+
+            Text(dataset.label)
+                .lineLimit(1)
+                .foregroundStyle(
+                    isHidden ? Color.secondary : style.legendFontColor
+                )
+                .strikethrough(isHidden, color: .secondary)
+        }
+        .contentShape(Rectangle())
+    }
+    
+    @ViewBuilder
+    private var cmbObservationLegendRow: some View {
+        if isExporting {
+            // Do not include disabled observations in exported legends.
+            if !hiddenCmbObservation {
+                cmbObservationLegendContent(isHidden: false)
+            }
+        } else {
+            Button {
+                // This changes only CMB legend visibility.
+                hiddenCmbObservation.toggle()
+            } label: {
+                cmbObservationLegendContent(
+                    isHidden: hiddenCmbObservation
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(cmbObservationLegendLabel)
+            .accessibilityValue(
+                hiddenCmbObservation ? "Disabled" : "Enabled"
+            )
+        }
+    }
+
+    private func cmbObservationLegendContent(
+        isHidden: Bool
+    ) -> some View {
+        let indicatorColor: Color = isHidden
+            ? .gray.opacity(0.55)
+        : style.observationColor.opacity(style.observationOpacity)
+
+        return HStack(spacing: 6) {
+            Circle()
+                .fill(indicatorColor)
+                .frame(width: 8, height: 8)
+
+            Text(cmbObservationLegendLabel)
+                .lineLimit(1)
+                .foregroundStyle(
+                    isHidden ? Color.secondary : style.legendFontColor
+                )
+                .strikethrough(isHidden, color: .secondary)
+        }
+        .contentShape(Rectangle())
+    }
+    
     @ViewBuilder
     private var LegendView: some View {
-        let plotAreaShape = isExporting
-        ? PlotAreaShape(exportWidth: width, exportHeight: height - (1-0.836)*896.0*0.4)
-        : PlotAreaShape()
+
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(validGraphKeys, id: \.self) { key in
-                HStack(spacing: 6) {
-                    Rectangle()
-                        .fill(styleDictionary[key]?.lineColor.opacity(styleDictionary[key]?.lineOpacity ?? 1.0) ?? .blue)
-                        .frame(width: 20, height: 3)
-                    
-                    Text(key)
-                        .font(.caption2)
-                        .lineLimit(1)
-                }
+
+            // Additional graph curves.
+            ForEach(legendGraphKeys, id: \.self) { key in
+                graphLegendRow(for: key)
             }
+
             if showObservedData {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(style.errorBarColor.opacity(style.errorBarOpacity))
-                        .frame(width: 20, height: 5)
-                    
-                    Text("Observed Data")
-                        .font(.caption2)
-                        .lineLimit(1)
+                if selectedObservable == "Pk" {
+                    ForEach(legendPkDatasets) { dataset in
+                        pkDatasetLegendRow(for: dataset)
+                    }
+                } else if selectedObservable == "Cl", !observedData.isEmpty {
+                    cmbObservationLegendRow
                 }
             }
         }
+        .font(
+            style.legendFont.font(
+                size: CGFloat(style.legendFontSize)
+            )
+        )
+        .foregroundStyle(style.legendFontColor)
         .padding(6)
-        .background(colorScheme == .dark ? Color(.systemGray6).opacity(0.9) : Color(.secondarySystemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 6))
-        .clipShape(plotAreaShape)
-        .offset(x: -22, y: 80)
+        .background(
+            style.legendBackgroundColor.opacity(
+                style.legendBackgroundOpacity
+            ),
+            in: RoundedRectangle(cornerRadius: 6)
+        )
     }
 
     private var xAxisLabel: some View {
@@ -294,14 +773,9 @@ struct ScientificChartView: View {
     var yAxisLabelSize: CGFloat {
         switch selectedObservable {
         case "Cl":
-            switch selectedOption {
-            case "PP":
-                return 150
-            default:
-                return 100
-            }
+            return 150
         case "Pk":
-            return 80
+            return 115
         default:
             return 150
         }
@@ -310,14 +784,9 @@ struct ScientificChartView: View {
     var yAxisPad: CGFloat {
         switch selectedObservable {
         case "Cl":
-            switch selectedOption {
-            case "PP":
-                return 100
-            default:
-                return 50
-            }
+           return 100
         case "Pk":
-            return 30
+            return 65
         default:
             return 60
         }
@@ -1157,17 +1626,11 @@ struct ScientificChartView: View {
         }
     }
     
-    private func plottedX(_ x: Double, observed: Bool = false) -> Double {
-        let adjustedX: Double
-
-        if selectedObservable == "Pk" && observed {
-            // Preserve the existing conversion for observational data.
-            adjustedX = x * 0.677
-        } else {
-            adjustedX = x
-        }
-
-        return axisCoordinate(adjustedX, axis: 0)
+    private func plottedX(
+        _ x: Double,
+        observed _: Bool = false
+    ) -> Double {
+        axisCoordinate(x, axis: 0)
     }
 
     private func plottedY(_ y: Double, observed: Bool = false) -> Double {
@@ -1206,87 +1669,180 @@ struct ScientificChartView: View {
         return true
     }
     
+    private func modelGridCoordinate(for x: Double) -> Double {
+        guard x.isFinite else { return .nan }
+
+        let scale = axisScales.first ?? "linear"
+
+        switch scale {
+        case "log":
+            guard x > 0 else { return .nan }
+            return log10(x)
+
+        case "loglin":
+            guard x > 0, mixSplit > 0 else { return .nan }
+
+            let logSplit = log10(mixSplit)
+
+            if x <= mixSplit {
+                return log10(x)
+            }
+
+            return logSplit + (x - mixSplit) / (mixSplit * log(10.0))
+
+        case "linlog":
+            guard x > 0, mixSplit > 0 else { return .nan }
+
+            let logSplit = log10(mixSplit)
+
+            if x <= mixSplit {
+                return logSplit + (x - mixSplit) / (mixSplit * log(10.0))
+            }
+
+            return log10(x)
+
+        default:
+            return x
+        }
+    }
+
+
+    private func modelGridValue(fromCoordinate coordinate: Double) -> Double {
+        let scale = axisScales.first ?? "linear"
+
+        switch scale {
+        case "log":
+            return pow(10.0, coordinate)
+
+        case "loglin":
+            guard mixSplit > 0 else { return .nan }
+
+            let logSplit = log10(mixSplit)
+
+            if coordinate <= logSplit {
+                return pow(10.0, coordinate)
+            }
+
+            return mixSplit + (coordinate - logSplit) * mixSplit * log(10.0)
+
+        case "linlog":
+            guard mixSplit > 0 else { return .nan }
+
+            let logSplit = log10(mixSplit)
+
+            if coordinate <= logSplit {
+                return mixSplit + (coordinate - logSplit) * mixSplit * log(10.0)
+            }
+
+            return pow(10.0, coordinate)
+
+        default:
+            return coordinate
+        }
+    }
+    
     private func renderCurvePoints(
         _ points: [GraphData],
-        extrapolationFraction: Double = 0.02
+        extrapolationFraction: Double = modelGridExtrapolationFraction
     ) -> [RenderedCurvePoint] {
 
-        // Transform once into the coordinate system used by the chart.
-        var result = points.compactMap { point -> RenderedCurvePoint? in
+        // Keep only valid model samples and transform them into chart coordinates.
+        let validPoints = points.compactMap {
+            point -> (RenderedCurvePoint, Double)? in
+
             let x = plottedX(point.xValue)
             let y = plottedY(point.yValue)
+            let gridX = modelGridCoordinate(for: point.xValue)
 
-            guard x.isFinite, y.isFinite else {
+            guard x.isFinite, y.isFinite, gridX.isFinite else {
                 return nil
             }
 
-            return RenderedCurvePoint(
-                id: point.id.uuidString,
-                x: x,
-                y: y
+            return (
+                RenderedCurvePoint(
+                    id: point.id.uuidString,
+                    x: x,
+                    y: y
+                ),
+                gridX
             )
         }
-        .sorted { $0.x < $1.x }
+        .sorted { $0.0.x < $1.0.x }
 
-        guard result.count >= 2 else {
-            return result
-        }
+        var result = validPoints.map { $0.0 }
 
-        let domain = getXDomain()
-        let span = domain.upperBound - domain.lowerBound
-
-        guard span.isFinite, span > 0,
+        guard result.count >= 2,
               extrapolationFraction > 0 else {
             return result
         }
 
-        let extensionDistance = span * extrapolationFraction
-        let leftTarget = domain.lowerBound - extensionDistance
-        let rightTarget = domain.upperBound + extensionDistance
+        // Determine the reference span from the actual model samples,
+        // not from the user-selected chart axis limits.
+        let gridMin = validPoints.first!.1
+        let gridMax = validPoints.last!.1
+        let gridSpan = gridMax - gridMin
 
-        // Extend the curve on the left if it currently ends inside the domain.
-        if result[0].x > domain.lowerBound {
-            let first = result[0]
-            let second = result[1]
-            let dx = second.x - first.x
+        guard gridSpan.isFinite, gridSpan > 0 else {
+            return result
+        }
 
-            if dx.isFinite, abs(dx) > 1e-12 {
-                let slope = (second.y - first.y) / dx
-                let extrapolatedY = first.y + slope * (leftTarget - first.x)
+        let extensionDistance = gridSpan * extrapolationFraction
 
-                if extrapolatedY.isFinite {
-                    result.insert(
-                        RenderedCurvePoint(
-                            id: "__extrapolated_left",
-                            x: leftTarget,
-                            y: extrapolatedY
-                        ),
-                        at: 0
-                    )
-                }
+        // Convert the extended model-grid endpoints back to physical x values.
+        let leftRawX = modelGridValue(
+            fromCoordinate: gridMin - extensionDistance
+        )
+
+        let rightRawX = modelGridValue(
+            fromCoordinate: gridMax + extensionDistance
+        )
+
+        // Convert those physical values into the current chart coordinate system.
+        let leftTarget = plottedX(leftRawX)
+        let rightTarget = plottedX(rightRawX)
+
+        guard leftTarget.isFinite, rightTarget.isFinite else {
+            return result
+        }
+
+        // Extrapolate the left endpoint using the first two model samples.
+        let first = result[0]
+        let second = result[1]
+        let leftDX = second.x - first.x
+
+        if leftDX.isFinite, abs(leftDX) > 1e-12 {
+            let slope = (second.y - first.y) / leftDX
+            let extrapolatedY = first.y + slope * (leftTarget - first.x)
+
+            if extrapolatedY.isFinite {
+                result.insert(
+                    RenderedCurvePoint(
+                        id: "__extrapolated_left",
+                        x: leftTarget,
+                        y: extrapolatedY
+                    ),
+                    at: 0
+                )
             }
         }
 
-        // Extend the curve on the right if it currently ends inside the domain.
-        if let last = result.last,
-           last.x < domain.upperBound {
+        // Extrapolate the right endpoint using the last two model samples.
+        let last = result[result.count - 1]
+        let previous = result[result.count - 2]
+        let rightDX = last.x - previous.x
 
-            let previous = result[result.count - 2]
-            let dx = last.x - previous.x
+        if rightDX.isFinite, abs(rightDX) > 1e-12 {
+            let slope = (last.y - previous.y) / rightDX
+            let extrapolatedY = last.y + slope * (rightTarget - last.x)
 
-            if dx.isFinite, abs(dx) > 1e-12 {
-                let slope = (last.y - previous.y) / dx
-                let extrapolatedY = last.y + slope * (rightTarget - last.x)
-
-                if extrapolatedY.isFinite {
-                    result.append(
-                        RenderedCurvePoint(
-                            id: "__extrapolated_right",
-                            x: rightTarget,
-                            y: extrapolatedY
-                        )
+            if extrapolatedY.isFinite {
+                result.append(
+                    RenderedCurvePoint(
+                        id: "__extrapolated_right",
+                        x: rightTarget,
+                        y: extrapolatedY
                     )
-                }
+                )
             }
         }
 

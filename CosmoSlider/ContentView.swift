@@ -46,7 +46,7 @@ struct ContentView: View {
     @State private var activeChartSheet: ChartEditorSheet?
     
     @State public var interpreter: Interpreter?
-    @State public var selectedModel: String = "/testing_out.tflite"//"/default_model.tflite"
+    @State public var selectedModel: String = "/default_model.tflite"//"/default_model.tflite"
     @State public var selectedObservable: String = "Cl"
     @State public var selectedOption: String = "TT"
     @State public var optionsDictionary: [String:[String]] = [:]
@@ -54,6 +54,7 @@ struct ContentView: View {
     @State public var lowestYValue: Double = 1.0
     @State public var highestYValue: Double = 2.0
     @State public var sliderNames: [String] = []
+    @State public var parameterNames: [String] = []
     @State public var sliderConfigs: [(range: (Double, Double), step: Double, precision: String)] = []
     @State public var xValues: [String:[Double]] = [:]
     @State public var outputIndices: [String:(Int,Int)] = [:]
@@ -63,6 +64,13 @@ struct ContentView: View {
     @State public var displayNames: [URL:String] = [:]
     @State public var showAlert: Bool = false
     @State public var alertMessage: String = ""
+    
+    @State private var pkDatasets: [PkObservationDataset] = []
+    @State private var selectedRedshift: Double = 0.0
+    
+    @State private var hiddenGraphKeys: Set<String> = []
+    @State private var hiddenPkDatasetKeys: Set<String> = []
+    @State private var hiddenCmbObservation: Bool = false
 
     
     @ObservedObject var documentHandler = DocumentHandler()
@@ -263,7 +271,10 @@ struct ContentView: View {
                             // Calculate height for the graph and sliders
                             let graphHeight = UIScreen.main.bounds.height * 0.4
                             let graphWidth = UIScreen.main.bounds.width
-                            let sliderHeight = (UIScreen.main.bounds.height * 0.6) / 7
+                            let sliderHeight = max(
+                                58,
+                                (UIScreen.main.bounds.height * 0.6) / 7 * 0.92
+                            )
                             
                             ZStack(alignment: .topLeading) {
                                 
@@ -271,6 +282,7 @@ struct ContentView: View {
                                     data: $data,
                                     showObservedData: $showObservedData,
                                     observedData: $observedData,
+                                    pkDatasets: $pkDatasets,
                                     selectedObservable: $selectedObservable,
                                     selectedOption: $selectedOption,
                                     xValues: $xValues,
@@ -283,12 +295,15 @@ struct ContentView: View {
                                     axisLimits: $axisLimits,
                                     axisScales: $axisScales,
                                     mixSplit: $mixSplit,
+                                    hiddenGraphKeys: $hiddenGraphKeys,
+                                    hiddenPkDatasetKeys: $hiddenPkDatasetKeys,
+                                    hiddenCmbObservation: $hiddenCmbObservation,
                                     logscale: logscale,
                                     transition: transition,
                                     l_min: l_min,
                                     width: graphWidth,
                                     height: graphHeight,
-                                    isExporting: false
+                                    isExporting: false,
                                 )
                                 .contextMenu {
                                     Button {
@@ -332,11 +347,18 @@ struct ContentView: View {
                                         .frame(width: 100, alignment: .center)
                                         .padding()
                                         .font(.system(size: 15))
+                                        .disabled(!["Cl", "Pk"].contains(selectedObservable))
                                     
                                     Spacer()
                                     
-                                    PickerButton(selectedOption: $selectedOption, selectedObservable: $selectedObservable, optionsDictionary: $optionsDictionary, axisData: $axisData)
-                                        .frame(alignment: .center)
+                                    PickerButton(
+                                        selectedOption: $selectedOption,
+                                        selectedObservable: $selectedObservable,
+                                        optionsDictionary: $optionsDictionary,
+                                        axisData: $axisData,
+                                        selectedRedshift: $selectedRedshift
+                                    )
+                                    .frame(alignment: .center)
                                     
                                     Spacer()
                                     
@@ -354,35 +376,88 @@ struct ContentView: View {
                             }
                             ScrollView {
                                 ForEach(Array(sliderNames.enumerated()), id: \.element) { index, name in
-                                    let config = sliderConfigs[index]
-                                    let range = config.range
-                                    let step = config.step
-                                    let precision = config.precision
-                                    // Check that range is valid
-                                    if range.0 < range.1 {
-                                        VStack {
-                                            Slider(value: $sliderValues[index], in: range.0...range.1, step: step)
-                                            HStack {
-                                                let fileURL = URL(fileURLWithPath: name)
-                                                SVGImage(url: fileURL)
-                                                    .frame(width: 230, height: 23, alignment: .bottomLeading)
-                                                
-                                                Spacer()
-                                                Text("\(sliderValues[index], specifier: precision)")
-                                                    .font(.system(size: 15))
+                                    if isSliderVisible(at: index) {
+                                        let config = sliderConfigs[index]
+                                        let range = config.range
+                                        let step = config.step
+                                        let precision = config.precision
+
+                                        if range.0 < range.1 {
+                                            VStack(spacing: 3) {
+                                                Slider(
+                                                    value: $sliderValues[index],
+                                                    in: range.0...range.1,
+                                                    step: step
+                                                )
+
+                                                HStack {
+                                                    let fileURL = URL(fileURLWithPath: name)
+
+                                                    SVGImage(url: fileURL)
+                                                        .frame(
+                                                            width: 230,
+                                                            height: 23,
+                                                            alignment: .bottomLeading
+                                                        )
+
+                                                    Spacer()
+
+                                                    Text("\(sliderValues[index], specifier: precision)")
+                                                        .font(.system(size: 15))
+                                                }
                                             }
+                                            .onChange(of: sliderValues[index]) {
+                                                setDataForGraph()
+                                            }
+                                            .frame(height: sliderHeight)
+                                        } else {
+                                            Text("Invalid range for Slider \(index + 1)")
+                                                .foregroundColor(.red)
                                         }
-                                        .onChange(of: sliderValues[index]) {
-                                            setDataForGraph()
-                                        }
-                                        .frame(height: sliderHeight)
-                                    } else {
-                                        // Provide a default valid range in case of invalid range
-                                        Text("Invalid range for Slider \(index + 1)").foregroundColor(.red)
                                     }
                                 }
                                 .id(refreshID)
-                                .padding()
+                                .padding(.horizontal)
+                                .padding(.vertical, 4)
+                                if selectedObservable == "Pk" {
+                                    let slices = pkOutputSlices(
+                                        family: selectedOption,
+                                        outputIndices: outputIndices
+                                    )
+
+                                    if let first = slices.first,
+                                    let last = slices.last,
+                                        first.redshift < last.redshift {
+
+                                        VStack(spacing: 0) {
+                                            Slider(
+                                                value: $selectedRedshift,
+                                                in: first.redshift...last.redshift,
+                                                step: 0.1
+                                            )
+                                            .onChange(of: selectedRedshift) {
+                                                setDataForGraph()
+                                            }
+
+                                            HStack {
+                                                Image("z_slider")
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 230, height: 23, alignment: .bottomLeading)
+
+                                                Spacer()
+
+                                                Text(
+                                                    selectedRedshift,
+                                                    format: .number.precision(.fractionLength(1))
+                                                )
+                                                .font(.system(size: 15))
+                                            }
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.bottom, 12)
+                                    }
+                                }
                             }
                             
                         }
@@ -392,6 +467,7 @@ struct ContentView: View {
                         }
                         .onAppear(perform: loadMetadata)
                         .onAppear(perform: loadTFLiteInterpreter)
+                        .onAppear(perform: loadPkDatasets)
                         .onAppear(perform: resetSliders)
                         .onAppear(perform: setYLimitValues)
                         .onAppear(perform: setDataForGraph)
@@ -407,11 +483,8 @@ struct ContentView: View {
                             setDefaultAxisSettings()
                             updateObservedData()
                         }
-                        .onChange(of: selectedOption) {
-                            setYLimitValues()
-                            setDataForGraph()
-                            setDefaultAxisSettings()
-                            updateObservedData()
+                        .onChange(of: selectedChartSelectionKey) {
+                            refreshSelectedChartSelection()
                         }
                     }
                 }
@@ -456,6 +529,8 @@ struct ContentView: View {
                     graphOrder: $graphOrder,
                     optionsDictionary: $optionsDictionary,
                     parameters: $sliderValues,
+                    parameterNames: $parameterNames,
+                    selectedRedshift: $selectedRedshift,
                     xArrayDictionary: $xValues,
                     interpreter: $interpreter,
                     outputIndices: $outputIndices
@@ -464,7 +539,8 @@ struct ContentView: View {
             case .chartStyle:
                 ChartStyleSheet(
                     isOpened: chartSheetPresentedBinding,
-                    style: $chartStyle
+                    style: $chartStyle,
+                    selectedObservable: $selectedObservable
                 )
 
             case .axisLimits:
@@ -474,6 +550,50 @@ struct ContentView: View {
                     axisScales: $axisScales,
                     mixSplit: $mixSplit
                 )
+            }
+        }
+    }
+    
+    private var selectedChartSelectionKey: String {
+        "\(selectedObservable)|\(selectedOption)"
+    }
+    
+    private func refreshSelectedChartSelection() {
+
+        // Avoid animating the chart's data and axis changes.
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+
+            // Observational data is only available for Cl and Pk.
+            if !["Cl", "Pk"].contains(selectedObservable) {
+                showObservedData = false
+            }
+
+            // Keep the selected redshift valid for the chosen Pk family.
+            clampSelectedRedshiftToFamily()
+
+            // Update the y-axis reference values first.
+            setYLimitValues()
+
+            // Recalculate all default axis settings for the new selection.
+            setDefaultAxisSettings()
+
+            // Refresh observational data and the theoretical curve.
+            updateObservedData()
+            setDataForGraph()
+        }
+    }
+    
+    private func enforceBestFitValuesForHiddenSliders() {
+        for index in sliderValues.indices {
+            guard bestFitValues.indices.contains(index) else {
+                continue
+            }
+
+            if !isSliderVisible(at: index) {
+                sliderValues[index] = bestFitValues[index]
             }
         }
     }
@@ -517,9 +637,31 @@ struct ContentView: View {
         if selectedObservable == "Cl" {
             x0 = 2.0
             x1 = 2500.0
+
         } else if selectedObservable == "Pk" {
+            let gridMin = positiveValues.min() ?? 1e-6
+            let gridMax = positiveValues.max() ?? 1.0
+
+            x0 = gridMin
+
+            // Calculate the 2% extrapolated maximum in log-k space.
+            let logGridSpan: Double
+
+            if gridMax > gridMin {
+                logGridSpan = log10(gridMax) - log10(gridMin)
+            } else {
+                logGridSpan = 1.0
+            }
+
+            x1 = pow(
+                10.0,
+                log10(gridMax) +
+                modelGridExtrapolationFraction * logGridSpan
+            )
+        } else if ["bg", "th"].contains(selectedObservable) {
+            // These observables use logarithmic x-axes.
             x0 = positiveValues.min() ?? 1e-6
-            x1 = positiveValues.max() ?? 1.0
+            x1 = positiveValues.max() ?? max(x0 * 10, 1.0)
         }
 
         if x1 <= x0 {
@@ -534,10 +676,16 @@ struct ContentView: View {
         }
 
         let defaultXScale: String
-        if x0 > 0 && x0 < mixSplit && mixSplit < x1 {
+
+        if ["bg", "th"].contains(selectedObservable) {
+            defaultXScale = "log"
+
+        } else if x0 > 0 && x0 < mixSplit && mixSplit < x1 {
             defaultXScale = "loglin"
+
         } else if x0 > 0 && logXSpan > 1 {
             defaultXScale = "log"
+
         } else {
             defaultXScale = "linear"
         }
@@ -569,59 +717,21 @@ struct ContentView: View {
             axisLimits = [x0, x1, 1e-2, 1e6]
 
         case "bg", "th":
-            let low = min(lowestYValue, highestYValue)
-            let high = max(lowestYValue, highestYValue)
 
-            let validYRange =
-                low.isFinite &&
-                high.isFinite &&
-                low > 0 &&
-                high > low
+            let low = lowestYValue
+            let high = max(highestYValue, low * 1.000001)
 
-            let logYSpan: Double
-            if validYRange {
-                logYSpan = log10(high) - log10(low)
-            } else {
-                logYSpan = 0
-            }
+            let logYSpan = log10(high) - log10(low)
+            let padding = max(logYSpan * 0.05, 0.05)
 
-            let useLogY = validYRange && logYSpan >= 1
+            axisScales = ["log", "log"]
 
-            if useLogY {
-                let padding = max(logYSpan * 0.05, 0.05)
-
-                axisScales = [
-                    defaultXScale,
-                    "log"
-                ]
-
-                axisLimits = [
-                    x0,
-                    x1,
-                    pow(10, log10(low) - padding),
-                    pow(10, log10(high) + padding)
-                ]
-            } else {
-                let safeLow = low.isFinite ? low : 0
-                let safeHigh = high.isFinite ? high : 1
-                let padding = max(
-                    max(abs(safeLow), abs(safeHigh)) * 0.05,
-                    1e-10
-                )
-                let span = max(safeHigh - safeLow, padding)
-
-                axisScales = [
-                    defaultXScale,
-                    "linear"
-                ]
-
-                axisLimits = [
-                    x0,
-                    x1,
-                    safeLow - 0.1 * span,
-                    safeHigh + 0.2 * span
-                ]
-            }
+            axisLimits = [
+                x0,
+                x1,
+                pow(10, log10(low) - padding),
+                pow(10, log10(high) + padding)
+            ]
 
         default:
             axisScales = ["linear", "linear"]
@@ -630,65 +740,101 @@ struct ContentView: View {
     }
 
     func setDataForGraph() {
-        data = updateGraphData(observable: selectedObservable,
-                               option: selectedOption,
-                               parameters: sliderValues,
-                               xArrayDictionary: xValues,
-                               outputIndices: outputIndices,
-                               interpreter: interpreter!)
+        enforceBestFitValuesForHiddenSliders()
+        
+        guard let modelInterpreter = interpreter else {
+            data = []
+            return
+        }
+
+        data = updateGraphData(
+            observable: selectedObservable,
+            option: selectedOption,
+            parameters: sliderValues,
+            xArrayDictionary: xValues,
+            outputIndices: outputIndices,
+            interpreter: modelInterpreter,
+            parameterNames: parameterNames,
+            redshift: selectedRedshift
+        )
     }
     
     func setYLimitValues() {
-        let bestFitGraph = updateGraphData(observable: selectedObservable,
-                                           option: selectedOption,
-                                           parameters: bestFitValues,
-                                           xArrayDictionary: xValues,
-                                           outputIndices: outputIndices,
-                                           interpreter: interpreter!)
-        lowestYValue = bestFitGraph.min(by: { $0.yValue < $1.yValue })?.yValue ?? 1
-        highestYValue = bestFitGraph.max(by: { $0.yValue < $1.yValue })?.yValue ?? 2
+        let bestFitGraph = updateGraphData(
+            observable: selectedObservable,
+            option: selectedOption,
+            parameters: bestFitValues,
+            xArrayDictionary: xValues,
+            outputIndices: outputIndices,
+            interpreter: interpreter!
+        )
+
+        let finiteYValues = bestFitGraph
+            .map(\.yValue)
+            .filter { $0.isFinite }
+
+        if ["bg", "th"].contains(selectedObservable) {
+            // Logarithmic y-axis: ignore zero and negative values.
+            let positiveYValues = finiteYValues.filter { $0 > 0 }
+
+            if let minimum = positiveYValues.min(),
+               let maximum = positiveYValues.max() {
+                lowestYValue = minimum
+                highestYValue = maximum > minimum
+                    ? maximum
+                    : minimum * 10
+            } else {
+                // Safe fallback if no positive model outputs exist.
+                lowestYValue = 1
+                highestYValue = 10
+            }
+
+        } else {
+            lowestYValue = finiteYValues.min() ?? 1
+            highestYValue = finiteYValues.max() ?? 2
+        }
     }
 
     func updateObservedData() {
-        // Update graph data based on selectedOption
+        guard selectedObservable == "Cl" else {
+            observedData = []
+            return
+        }
+
         let fileName: String
-        var xValIndex: Int = 0
-        var yValIndex: Int = 1
-        var errNegIndex: Int = 2
-        var errPosIndex: Int = 3
-        
-        switch selectedObservable {
-        case "Cl":
-            switch selectedOption {
-            case "TT":
-                fileName = "tt_data"
-            case "TE":
-                fileName = "te_data"
-            case "EE":
-                fileName = "ee_data"
-            case "PP":
-                fileName = "pp_data"
-                xValIndex = 3
-                yValIndex = 4
-                errNegIndex = 5
-                errPosIndex = 5
-            default:
-                fileName = ""
-            }
-        case "Pk":
-            let redshift: Double = Double(selectedOption.split(separator: "_").last ?? "0.0") ?? 0.0
-            switch redshift {
-            case 0.0:
-                fileName = "pk_boss"
-                errNegIndex = 4
-                errPosIndex = 4
-            default:
-                fileName = ""
-            }
+        var xValIndex = 0
+        var yValIndex = 1
+        var errNegIndex = 2
+        var errPosIndex = 3
+
+        switch selectedOption {
+        case "TT":
+            fileName = "tt_data"
+
+        case "TE":
+            fileName = "te_data"
+
+        case "EE":
+            fileName = "ee_data"
+
+        case "PP":
+            fileName = "pp_data"
+            xValIndex = 3
+            yValIndex = 4
+            errNegIndex = 5
+            errPosIndex = 5
+
         default:
             fileName = ""
         }
-        observedData = readDataFromFile(fileName: fileName, xValIndex: xValIndex, yValIndex: yValIndex, errNegIndex: errNegIndex, errPosIndex: errPosIndex)
+
+        observedData = readDataFromFile(
+            fileName: fileName,
+            xValIndex: xValIndex,
+            yValIndex: yValIndex,
+            errNegIndex: errNegIndex,
+            errPosIndex: errPosIndex
+        )
     }
     
     func readDataFromFile(fileName: String, xValIndex: Int, yValIndex: Int, errNegIndex: Int, errPosIndex: Int) -> [GraphData] {
@@ -717,15 +863,83 @@ struct ContentView: View {
     }
     
     func resetSliders() {
-        // Reset the sliders to best-fit values
+        // Apply hardcoded slider range overrides.
+        applyHardcodedSliderLimits()
+
+        // Reset all parameters to their best-fit values.
         sliderValues = []
+
         for (index, config) in sliderConfigs.enumerated() {
             let precision = config.precision
-            let value = bestFitValues[index]
-            // round value to the precision
-            let roundedValue = Double(String(format: precision, value))!
+            let bestFitValue = bestFitValues[index]
+
+            // Keep ln(10^10 A_s) inside the hardcoded range.
+            let value: Double
+
+            if isLn10AsParameter(at: index) {
+                value = min(max(bestFitValue, 2.0), 4.0)
+            } else {
+                value = bestFitValue
+            }
+
+            let roundedValue = Double(
+                String(format: precision, value)
+            ) ?? value
+
             sliderValues.append(roundedValue)
         }
+
+        // Hidden parameters must use their exact best-fit values.
+        enforceBestFitValuesForHiddenSliders()
+
+        // Reset redshift to zero whenever resetting Pk.
+        if selectedObservable == "Pk" {
+            selectedRedshift = 0.0
+        }
+
+        // Recalculate the chart.
+        setDataForGraph()
+    }
+    
+    private func normalizedParameterName(at index: Int) -> String {
+        let name: String
+
+        if parameterNames.indices.contains(index) {
+            name = parameterNames[index]
+        } else if sliderNames.indices.contains(index) {
+            name = URL(fileURLWithPath: sliderNames[index])
+                .deletingPathExtension()
+                .lastPathComponent
+        } else {
+            return ""
+        }
+
+        return name.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    private func isTauReioParameter(at index: Int) -> Bool {
+        normalizedParameterName(at: index) == "taureio"
+    }
+
+    private func isCMinOrEta0Parameter(at index: Int) -> Bool {
+        let name = normalizedParameterName(at: index)
+        return name == "cmin" || name == "eta0"
+    }
+
+    private func isLn10AsParameter(at index: Int) -> Bool {
+        normalizedParameterName(at: index).contains("ln1010as")
+    }
+
+    private func isSliderVisible(at index: Int) -> Bool {
+        if isTauReioParameter(at: index) {
+            return selectedObservable != "Pk"
+        }
+
+        if isCMinOrEta0Parameter(at: index) {
+            return selectedObservable == "Pk"
+        }
+
+        return true
     }
     
     @MainActor
@@ -767,6 +981,7 @@ struct ContentView: View {
                 data: $data,
                 showObservedData: $showObservedData,
                 observedData: $observedData,
+                pkDatasets: $pkDatasets,
                 selectedObservable: $selectedObservable,
                 selectedOption: $selectedOption,
                 xValues: $xValues,
@@ -779,12 +994,15 @@ struct ContentView: View {
                 axisLimits: $axisLimits,
                 axisScales: $axisScales,
                 mixSplit: $mixSplit,
+                hiddenGraphKeys: $hiddenGraphKeys,
+                hiddenPkDatasetKeys: $hiddenPkDatasetKeys,
+                hiddenCmbObservation: $hiddenCmbObservation,
                 logscale: logscale,
                 transition: transition,
                 l_min: l_min,
                 width: contentWidth,
                 height: contentHeight,
-                isExporting: true
+                isExporting: true,
             )
 
             try ScientificChartView.exportPDF(
@@ -800,6 +1018,22 @@ struct ContentView: View {
 
         } catch {
             print("Export failed:", error)
+        }
+    }
+    
+    private func applyHardcodedSliderLimits() {
+        for index in sliderConfigs.indices {
+            guard isLn10AsParameter(at: index) else {
+                continue
+            }
+
+            let config = sliderConfigs[index]
+
+            sliderConfigs[index] = (
+                range: (2.0, 4.0),
+                step: config.step,
+                precision: config.precision
+            )
         }
     }
     
@@ -820,6 +1054,89 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             showExportDialog = true
         }
+    }
+    
+    func loadPkDatasets() {
+        guard let url = Bundle.main.url(
+            forResource: "pk_data",
+            withExtension: "json"
+        ) else {
+            print("pk_data.json was not found in the app bundle.")
+            pkDatasets = []
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let decoded = try JSONDecoder().decode(
+                PkCompilationData.self,
+                from: data
+            )
+            pkDatasets = decoded.datasets
+        } catch {
+            print("Failed to decode pk_data.json:", error)
+            pkDatasets = []
+        }
+    }
+    
+    func hRangeForPkUnits() -> (min: Double, max: Double) {
+        let aliases = ["h", "h0", "hubble", "hubbleconstant"]
+
+        guard let index = parameterNames.firstIndex(where: { name in
+            let normalized = name
+                .lowercased()
+                .filter { $0.isLetter || $0.isNumber }
+
+            return aliases.contains(normalized)
+        }),
+        sliderConfigs.indices.contains(index) else {
+            return (0.677, 0.677)
+        }
+
+        let name = parameterNames[index]
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+
+        let conversion = name == "h" ? 1.0 : 0.01
+        let range = sliderConfigs[index].range
+
+        let first = range.0 * conversion
+        let second = range.1 * conversion
+
+        guard first.isFinite, second.isFinite,
+              first > 0, second > 0 else {
+            return (0.677, 0.677)
+        }
+
+        return (
+            min: min(first, second),
+            max: max(first, second)
+        )
+    }
+    
+    func clampSelectedRedshiftToFamily() {
+        guard selectedObservable == "Pk" else {
+            return
+        }
+
+        let slices = pkOutputSlices(
+            family: selectedOption,
+            outputIndices: outputIndices
+        )
+
+        guard let first = slices.first,
+              let last = slices.last else {
+            return
+        }
+
+        let requested = selectedRedshift.isFinite
+            ? selectedRedshift
+            : first.redshift
+
+        selectedRedshift = min(
+            max(requested, first.redshift),
+            last.redshift
+        )
     }
 }
 

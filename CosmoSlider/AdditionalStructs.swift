@@ -10,6 +10,29 @@ import Charts
 import SwiftUI
 
 
+struct PkCompilationData: Decodable {
+    let datasets: [PkObservationDataset]
+}
+
+struct PkObservationDataset: Decodable, Identifiable {
+    let id: String
+    let label: String
+    let color: String?
+    let points: [PkObservationPoint]
+}
+
+struct PkObservationPoint: Decodable, Identifiable {
+    let k: Double
+    let pk: Double
+    let kLow: Double?
+    let kHigh: Double?
+    let pkLow: Double?
+    let pkHigh: Double?
+
+    var id: String { String(k) }
+}
+
+
 struct IdentifiableURL: Identifiable {
     var id: URL { url }
     var url: URL
@@ -161,6 +184,32 @@ enum AxisTickFont: String, CaseIterable, Identifiable {
     }
 }
 
+enum LegendPosition: String, CaseIterable, Identifiable {
+    case topRight = "Top right"
+    case topLeft = "Top left"
+    case bottomRight = "Bottom right"
+    case bottomLeft = "Bottom left"
+
+    var id: String { rawValue }
+
+    var alignment: Alignment {
+        switch self {
+        case .topRight:    return .topTrailing
+        case .topLeft:     return .topLeading
+        case .bottomRight: return .bottomTrailing
+        case .bottomLeft:  return .bottomLeading
+        }
+    }
+
+    var isLeft: Bool {
+        self == .topLeft || self == .bottomLeft
+    }
+
+    var isTop: Bool {
+        self == .topLeft || self == .topRight
+    }
+}
+
 enum LinePattern: String, CaseIterable, Identifiable {
     case solid = "Solid"
     case dashed = "Dashed"
@@ -179,6 +228,8 @@ enum LinePattern: String, CaseIterable, Identifiable {
     }
 }
 
+let modelGridExtrapolationFraction: Double = 0.02
+
 struct ChartStyle {
     var exportWidth: Double = 1200
     var exportHeight: Double = 800
@@ -187,15 +238,44 @@ struct ChartStyle {
     var lineOpacity: Double = 1.0
     var lineWidth: Double = 2.0
 
-    var errorBarColor: Color = .green
-    var errorBarOpacity: Double = 0.5
-    var errorBarMarkerSize: Double = 3.0
-    var errorBarCapSize: Double = 2.0
+    // Observation styling
+
+    // Shared colour: used for Cl observations and the first Pk dataset.
+    var observationColor: Color = Color(
+        red: 50.0 / 255.0,
+        green: 205.0 / 255.0,
+        blue: 50.0 / 255.0
+    )
+
+    // Additional colours for Pk datasets 2–6.
+    var pkAdditionalColors: [Color] = [
+        Color(red: 250.0 / 255.0, green: 200.0 / 255.0, blue: 17.0 / 255.0),
+        Color(red: 252.0 / 255.0, green: 101.0 / 255.0, blue: 108.0 / 255.0),
+        Color(red: 5.0 / 255.0, green: 241.0 / 255.0, blue: 250.0 / 255.0),
+        Color(red: 245.0 / 255.0, green: 32.0 / 255.0, blue: 238.0 / 255.0),
+        Color(red: 155.0 / 255.0, green: 113.0 / 255.0, blue: 199.0 / 255.0)
+    ]
+
+    // Shared opacity for observation markers and error bars.
+    var observationOpacity: Double = 0.75
+
+    // Shared marker size.
+    var observationMarkerSize: Double = 2.0
     
     var axisColor: Color = .gray
     var tickLabelFont: AxisTickFont = .system
     var tickLabelFontSize: Double = 12
     var linePattern: LinePattern = .solid
+
+    // Legend settings
+    var showLegend: Bool = true
+    var legendFont: AxisTickFont = .system
+    var legendFontSize: Double = 10
+    var legendFontColor: Color = .gray
+    var legendBackgroundColor: Color = Color(.secondarySystemBackground)
+    var legendBackgroundOpacity: Double = 0.9
+    var legendPosition: LegendPosition = .topRight
+    var legendPositionWasCustomized: Bool = false
 
     var exportPaddingTop: Double = 40
     var exportPaddingBottom: Double = 40

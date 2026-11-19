@@ -17,8 +17,6 @@ extension ContentView {
         var zipFilePath: String?
         if selectedModel == "/default_model.tflite" {
             zipFilePath = Bundle.main.path(forResource: "default_model", ofType: "tflite")
-        } else if selectedModel == "/testing_out.tflite" {
-            zipFilePath = Bundle.main.path(forResource: "testing_out", ofType: "tflite")
         } else {
             zipFilePath = selectedModel
         }
@@ -59,7 +57,9 @@ extension ContentView {
             let lines = data.components(separatedBy: .newlines)
             
             var names: [String] = []
+            parameterNames = []
             sliderConfigs = []
+
             for line in lines {
                 // each line is on the form "name, xmin, xmax, deltax" and the names (plus the extension .svg) should be extracted and appended to the names list
                 let components = line.components(separatedBy: ", ")
@@ -74,8 +74,14 @@ extension ContentView {
                     }
                     let roundedXMin = Double(String(format: precision, xmin))!
                     let roundedXMax = Double(String(format: precision, xmax))!
-                    sliderConfigs.append(((roundedXMin, roundedXMax), deltax, precision))
-                }
+
+                    parameterNames.append(components[0])
+
+                    sliderConfigs.append((
+                        (roundedXMin, roundedXMax),
+                        deltax,
+                        precision
+                    ))                }
             }
             
             try fileManager.removeItem(at: tempInputPath)
@@ -185,15 +191,38 @@ extension ContentView {
                         .dropFirst()
                         .joined(separator: "_")
                         .uppercased()
+                } else if typeKey.caseInsensitiveCompare("Pk") == .orderedSame {
+                    let parts = outputName.split(separator: "_")
+
+                    // Pk family outputs end in a numeric redshift:
+                    // Pk_pk_0.0, Pk_pk_cb_3.8, etc.
+                    guard parts.count >= 3,
+                          Double(parts.last!) != nil else {
+                        continue
+                    }
+
+                    // Strip only the final redshift component.
+                    typeValue = parts
+                        .dropFirst()
+                        .dropLast()
+                        .joined(separator: "_")
                 } else {
                     typeValue = outputName
                         .split(separator: "_")
                         .dropFirst()
                         .joined(separator: "_")
                 }
+                
+                if !optionsDictionary[typeKey, default: []].contains(typeValue) {
+                    optionsDictionary[typeKey, default: []].append(typeValue)
+                }
 
-                options.append(typeValue)
-                optionsDictionary[typeKey, default: []].append(typeValue)
+                if !options.contains(typeValue) {
+                    options.append(typeValue)
+                }
+
+                //options.append(typeValue)
+                //optionsDictionary[typeKey, default: []].append(typeValue)
             }
 
             // If the current observable is not available in this model,
@@ -293,8 +322,6 @@ extension ContentView {
         var zipFilePath: String?
         if selectedModel == "/default_model.tflite" {
             zipFilePath = Bundle.main.path(forResource: "default_model", ofType: "tflite")
-        } else if selectedModel == "/testing_out.tflite" {
-            zipFilePath = Bundle.main.path(forResource: "testing_out", ofType: "tflite")
         } else {
             zipFilePath = selectedModel
         }

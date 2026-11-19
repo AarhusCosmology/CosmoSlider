@@ -8,30 +8,50 @@
 import Foundation
 import SwiftUI
 
-
 struct PickerButton: View {
     @Binding var selectedOption: String
     @Binding var selectedObservable: String
     @Binding var optionsDictionary: [String: [String]]
     @Binding var axisData: [GraphData]
+    @Binding var selectedRedshift: Double
 
-    let labelDictionary: [String: String] = [
-        "Cl" : "CMB power spectra",
-        "Pk" : "Matter power spectra",
-        "bg" : "Background",
-        "th" : "Thermodynamics",
-        "extra" : "Additional",
+    private let labelDictionary: [String: String] = [
+        "Cl": "CMB power spectra",
+        "Pk": "Matter power spectra",
+        "bg": "Background",
+        "th": "Thermodynamics",
+        "extra": "Additional"
     ]
-        
+
+    private func displayOption(_ option: String) -> String {
+        guard selectedObservable == "Pk" else {
+            return option == "PP" ? "𝜑𝜑" : option
+        }
+
+        switch option.lowercased() {
+        case "pk":
+            return "Non-linear"
+        case "pk_cb":
+            return "Non-linear (cb)"
+        case "pk_lin":
+            return "Linear"
+        case "pk_cb_lin":
+            return "Linear (cb)"
+        default:
+            return option
+        }
+    }
+
     var body: some View {
         Menu {
-            if let options = optionsDictionary[selectedObservable] {
-                ForEach(options, id: \.self) { option in
+            if let availableOptions = optionsDictionary[selectedObservable] {
+                ForEach(availableOptions, id: \.self) { option in
                     Button {
                         selectedOption = option
                     } label: {
                         HStack {
-                            Text(option == "PP" ? "𝜑𝜑" : option)
+                            Text(displayOption(option))
+
                             if option == selectedOption {
                                 Spacer()
                                 Image(systemName: "checkmark")
@@ -45,20 +65,20 @@ struct PickerButton: View {
 
             if optionsDictionary.keys.count > 1 {
                 Menu("Change Observable…") {
-                    ForEach(optionsDictionary.keys.sorted(), id: \.self) { key in
+                    ForEach(
+                        optionsDictionary.keys.sorted(),
+                        id: \.self
+                    ) { key in
                         Button {
-                            // Temporary safe range while the new observable is prepared.
-                            axisData = [
-                                GraphData(xValue: 0, yValue: -1),
-                                GraphData(xValue: 1, yValue: 1)
-                            ]
                             selectedObservable = key
+
                             if let firstOption = optionsDictionary[key]?.first {
                                 selectedOption = firstOption
                             }
                         } label: {
                             HStack {
                                 Text(labelDictionary[key] ?? key)
+
                                 if key == selectedObservable {
                                     Spacer()
                                     Image(systemName: "checkmark")
@@ -68,34 +88,43 @@ struct PickerButton: View {
                     }
                 }
             } else {
-                // Disabled / informational label
-                Button("Change Observable…") { }
+                Button("Change Observable…") {}
                     .disabled(true)
             }
         } label: {
             HStack {
                 Image(systemName: "chart.xyaxis.line")
                     .font(.system(size: 20))
-                if ["bg", "th"].contains(selectedObservable) {
-                    Text(selectedObservable)
-                        .font(.system(size: 20))
-                        .bold()
-                } else if selectedOption.contains("pk") {
-                    let redshift = selectedOption.split(separator: "_").last!
-                    let name = selectedOption.split(separator: "_").dropLast().joined(separator: "_")
-                    VStack(alignment: .center) {
-                        Text(name)
+
+                if selectedObservable == "Pk" {
+                    Text(pkFamilyDisplayName(selectedOption))
                             .font(.system(size: 16))
                             .bold()
-                        Text("z = \(redshift)")
-                            .font(.system(size: 10))
-                    }
+                } else if ["bg", "th"].contains(selectedObservable) {
+                    Text(selectedObservable.uppercased())
+                        .font(.system(size: 16))
+                        .bold()
                 } else {
-                    Text(selectedOption == "PP" ? "𝜑𝜑" : selectedOption)
-                        .font(.system(size: 20))
+                    Text(displayOption(selectedOption))
+                        .font(.system(size: 16))
                         .bold()
                 }
             }
+        }
+    }
+    
+    private func pkFamilyDisplayName(_ family: String) -> String {
+        switch family {
+        case "pk":
+            return "Non-linear"
+        case "pk_cb":
+            return "Non-linear (cb)"
+        case "pk_lin":
+            return "Linear"
+        case "pk_cb_lin":
+            return "Linear (cb)"
+        default:
+            return family
         }
     }
 }
